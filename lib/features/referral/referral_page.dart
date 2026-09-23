@@ -5,7 +5,7 @@ class ReferralPage extends StatefulWidget{const ReferralPage({super.key});@overr
 class _ReferralPageState extends State<ReferralPage>{
  final repo=ReferralRepository();Map<String,dynamic>? stats;List<Map<String,dynamic>> tx=[];bool loading=true;String? error;
  @override void initState(){super.initState();load();}
- Future<void> load()async{setState(()=>loading=true);try{final s=await repo.stats();final t=await repo.transactions();setState(()=>{stats=Map<String,dynamic>.from(s['stats']),tx=t,error=null});}catch(_){setState(()=>error='برای مشاهده کیف پول ابتدا وارد شوید');}finally{if(mounted)setState(()=>loading=false);}}
+ Future<void> load()async{setState(()=>loading=true);try{final s=await repo.stats();final t=await repo.transactions();setState(() { stats=Map<String,dynamic>.from(s['stats']); tx=t; error=null; });}catch(_){setState(()=>error='برای مشاهده کیف پول ابتدا وارد شوید');}finally{if(mounted)setState(()=>loading=false);}}
  String money(dynamic v)=((num.tryParse(v.toString())??0).toStringAsFixed(0))+' تومان';
  @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('معرف و کیف پول')),body:loading?const Center(child:CircularProgressIndicator()):RefreshIndicator(onRefresh:load,child:ListView(padding:const EdgeInsets.all(20),children:[
  if(error!=null)Text(error!,style:const TextStyle(color:Colors.red)),
