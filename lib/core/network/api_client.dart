@@ -35,11 +35,10 @@ class DioProvider {
   final TokenStorage _storage = const TokenStorage();
   Future<bool> _refresh() async {
     try {
-      final r = await dio.post('/auth/refresh');
-      final token = r.data['accessToken'] as String?;
-      if (token == null || token.isEmpty) return false;
-      await _storage.write(token);
-      return true;
-    } catch (_) { return false; }
+      final r=await dio.post('/auth/refresh');
+      final token=r.data['accessToken'] as String?;
+      if(token==null || token.isEmpty)return false;
+      await _storage.write(token); return true;
+    } catch(_){return false;}
   }
 }
