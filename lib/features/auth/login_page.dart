@@ -12,7 +12,7 @@ class _LoginPageState extends ConsumerState<LoginPage>{
   bool sent=false,busy=false; String? error;
   @override void dispose(){phone.dispose();code.dispose();super.dispose();}
   Future<void> submit() async {
-    setState(()=>busy=true); setState(()=>error=null);
+    setState(() { busy=true; error=null; });
     try{
       final repo=ref.read(authRepositoryProvider);
       if(!sent){await repo.sendOtp(phone.text.trim());setState(()=>sent=true);}
