@@ -18,6 +18,17 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
     try { final data = await repo.getStore(widget.storeId); if (!mounted) return; setState(() { store=data; loading=false; }); }
     catch (e) { if (mounted) setState(() { loading=false; error=networkErrorMessage(e); }); }
   }
+  Future<void> _openMap(double? lat, double? lng, String address) async {
+    final validCoords = lat != null && lng != null &&
+        lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+    final query = validCoords ? '$lat,$lng' : address.trim();
+    if (query.isEmpty) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('موقعیت یا آدرس فروشگاه ثبت نشده است')));
+      return;
+    }
+    await _open(Uri.https('www.google.com', '/maps/search/', {'api': '1', 'query': query}));
+  }
+
   Future<void> _open(Uri uri) async {
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication) && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('امکان باز کردن این مورد وجود ندارد')));
@@ -57,7 +68,7 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
       Text(name,style:Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.w800)),
       if(city.isNotEmpty||province.isNotEmpty) Padding(padding:const EdgeInsets.only(top:6),child:Text([city,province].where((e)=>e.isNotEmpty).join('، '))),
       if(description.isNotEmpty) Padding(padding:const EdgeInsets.only(top:16),child:Text(description)),
-      if(address.isNotEmpty) Card(child:ListTile(leading:const Icon(Icons.location_on_outlined),title:const Text('آدرس'),subtitle:Text(address),trailing:IconButton(tooltip:'مسیریابی',onPressed:()=>_open(lat!=null&&lng!=null?Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng'):Uri.parse('https://www.google.com/maps/search/?api=1&query='+Uri.encodeComponent(address))),icon:const Icon(Icons.directions_outlined)))),
+      if(address.isNotEmpty || (lat != null && lng != null)) Card(child:ListTile(leading:const Icon(Icons.location_on_outlined),title:const Text('آدرس'),subtitle:address.isNotEmpty ? Text(address) : const Text('موقعیت فروشگاه ثبت شده است'),trailing:IconButton(tooltip:'مسیریابی',onPressed:()=>_openMap(lat,lng,address),icon:const Icon(Icons.directions_outlined)))),
       if(phone.isNotEmpty) FilledButton.icon(onPressed:()=>_open(Uri(scheme:'tel',path:phone)),icon:const Icon(Icons.phone_outlined),label:const Text('تماس با فروشگاه')),
       if(products.isNotEmpty) ...[const SizedBox(height:24),Text('کالاهای فروشگاه',style:Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight:FontWeight.w800)),const SizedBox(height:8),...products.map((p){ final id=int.tryParse(p['id']?.toString()??''); final price=p['price']; final priceText=buyerPriceLabel(price); final status=buyerStatusLabel(p['status']); return Card(child:ListTile(onTap:id==null?null:()=>context.push('/products/$id'),title:Text((p['name']??'کالا').toString(),maxLines:2,overflow:TextOverflow.ellipsis),subtitle:Text('$priceText • $status'),trailing:id!=null?const Icon(Icons.chevron_left):null)); })],
     ]);
