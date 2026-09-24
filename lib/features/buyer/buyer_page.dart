@@ -239,8 +239,10 @@ class _BuyerPageState extends State<BuyerPage> {
     final priceText = buyerPriceLabel(product['price']);
     final status = buyerStatusLabel(product['status']);
     final productId = int.tryParse(product['id']?.toString() ?? '');
-    final store = (product['store_name'] ?? '').toString();
-    final city = (product['store_city'] ?? product['city'] ?? '').toString();
+    final rawStore = product['store'];
+    final storeMap = rawStore is Map ? Map<String, dynamic>.from(rawStore) : null;
+    final store = (product['store_name'] ?? storeMap?['name'] ?? '').toString();
+    final city = (product['store_city'] ?? storeMap?['city'] ?? product['city'] ?? '').toString();
     final imageUrl =
         (product['image_url'] ?? product['image'] ?? '').toString().trim();
     final available = isBuyerProductAvailable(status);
