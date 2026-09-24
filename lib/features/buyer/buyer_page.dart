@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'buyer_repository.dart';
+import 'package:go_router/go_router.dart';
 
 class BuyerPage extends StatefulWidget {
   const BuyerPage({super.key});
@@ -216,6 +217,7 @@ class _BuyerPageState extends State<BuyerPage> {
     final name = (product['name'] ?? product['title'] ?? 'کالا').toString();
     final price = product['price'];
     final status = (product['status'] ?? 'ناموجود').toString();
+    final productId = int.tryParse(product['id']?.toString() ?? '');
     final store = (product['store_name'] ?? '').toString();
     final city = (product['store_city'] ?? product['city'] ?? '').toString();
 
@@ -226,6 +228,7 @@ class _BuyerPageState extends State<BuyerPage> {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
+        onTap: productId != null ? () => context.push('/products/$productId') : null,
         leading: const CircleAvatar(
           child: Icon(Icons.inventory_2_outlined),
         ),
