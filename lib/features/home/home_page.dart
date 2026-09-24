@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/config/web_config.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -11,14 +12,19 @@ class HomePage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Text('ببین کی داره، حضوری بگیر', style: Theme.of(context).textTheme.headlineSmall),
+          Text('همراه موبایل کی‌داره', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 8),
-          const Text('کالا را پیدا کن، فروشگاه نزدیک را ببین و قبل از رفتن از موجودی مطمئن شو.'),
+          const Text('جستجو، تماس با فروشگاه و مدیریت ساده کالا اینجاست. نقشه، چت و پرداخت روی سایت کامل می‌ماند.'),
           const SizedBox(height: 24),
           _Action(title: 'جستجوی کالا', icon: Icons.search, onTap: () => context.go('/buyer')),
           _Action(title: 'پنل فروشنده', icon: Icons.storefront_outlined, onTap: () => context.go('/seller')),
           _Action(title: 'معرفی و کیف پول', icon: Icons.account_balance_wallet_outlined, onTap: () => context.go('/referral')),
           _Action(title: 'حساب کاربری', icon: Icons.person_outline, onTap: () => context.go('/profile')),
+          _Action(
+            title: 'باز کردن سایت کامل',
+            icon: Icons.open_in_new,
+            onTap: () => WebConfig.open('/'),
+          ),
         ],
       ),
     );

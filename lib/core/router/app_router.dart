@@ -17,14 +17,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final authState = ref.read(authControllerProvider);
 
-      // Wait for saved-session restoration before deciding whether a
-      // protected route should go to login.
       if (authState.isLoading || authState.hasError) return null;
 
       final loggedIn = authState.valueOrNull != null;
       final isAuth = state.matchedLocation == '/login';
       final protected = state.matchedLocation == '/profile' ||
-          state.matchedLocation == '/seller';
+          state.matchedLocation == '/seller' ||
+          state.matchedLocation == '/referral';
       if (protected && !loggedIn) {
         return '/login?redirect=${Uri.encodeComponent(state.uri.toString())}';
       }
