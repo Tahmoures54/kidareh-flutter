@@ -15,7 +15,7 @@ class _LoginPageState extends ConsumerState<LoginPage>{
     setState(() { busy=true; error=null; });
     try{
       final repo=ref.read(authRepositoryProvider);
-      if(!sent){await repo.sendOtp(phone.text.trim());setState(()=>sent=true);}
+      if(!sent){await repo.sendOtp(phone.text.trim());if(!mounted)return;setState(()=>sent=true);}
       else{
         final r=await repo.verifyOtp(phone.text.trim(),code.text.trim());
         await ref.read(authControllerProvider.notifier).setUser(Map<String,dynamic>.from(r['user'] as Map));
@@ -23,7 +23,7 @@ class _LoginPageState extends ConsumerState<LoginPage>{
       }
     }catch(e){
       final m=e is DioException && e.response?.data is Map ? (e.response!.data['error']??'خطا').toString() : 'ارتباط با سرور برقرار نشد';
-      setState(()=>error=m);
+      if(mounted)setState(()=>error=m);
     }finally{if(mounted)setState(()=>busy=false);}
   }
   @override Widget build(BuildContext context)=>Scaffold(
