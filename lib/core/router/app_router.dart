@@ -15,7 +15,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
     initialLocation: '/',
     redirect: (context, state) {
-      final loggedIn = ref.read(authControllerProvider).valueOrNull != null;
+      final authState = ref.read(authControllerProvider);
+
+      // Wait for saved-session restoration before deciding whether a
+      // protected route should go to login.
+      if (authState.isLoading) return null;
+
+      final loggedIn = authState.valueOrNull != null;
       final isAuth = state.matchedLocation == '/login';
       final protected = state.matchedLocation == '/profile' ||
           state.matchedLocation == '/seller';
@@ -31,12 +37,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/buyer', builder: (_, __) => const BuyerPage()),
       GoRoute(path: '/stores/:id', builder: (_, state) {
         final id = int.tryParse(state.pathParameters['id'] ?? '');
-        if (id == null) return const Scaffold(body: Center(child: Text('فروشگاه نامعتبر')));
+        if (id == null) {
+          return const Scaffold(body: Center(child: Text('فروشگاه نامعتبر')));
+        }
         return StoreDetailPage(storeId: id);
       }),
       GoRoute(path: '/products/:id', builder: (_, state) {
         final id = int.tryParse(state.pathParameters['id'] ?? '');
-        if (id == null) return const Scaffold(body: Center(child: Text('کالای نامعتبر')));
+        if (id == null) {
+          return const Scaffold(body: Center(child: Text('کالای نامعتبر')));
+        }
         return ProductDetailPage(productId: id);
       }),
       GoRoute(path: '/seller', builder: (_, __) => const SellerPage()),
