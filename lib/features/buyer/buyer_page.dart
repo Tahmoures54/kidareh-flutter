@@ -110,9 +110,13 @@ class _BuyerPageState extends State<BuyerPage> {
         cursor = page.nextCursor;
       });
     } catch (e) {
-      if (mounted) setState(() => error = networkErrorMessage(e));
+      if (mounted && generation == _searchGeneration) {
+        setState(() => error = networkErrorMessage(e));
+      }
     } finally {
-      if (mounted) setState(() => loadingMore = false);
+      if (mounted && generation == _searchGeneration) {
+        setState(() => loadingMore = false);
+      }
     }
   }
 
@@ -123,6 +127,7 @@ class _BuyerPageState extends State<BuyerPage> {
   }
 
   void _clearSearch() {
+    _searchGeneration++;
     q.clear();
     setState(() {
       items.clear();
