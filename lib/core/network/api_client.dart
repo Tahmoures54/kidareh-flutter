@@ -42,7 +42,7 @@ class DioProvider {
       },
       onError: (error, handler) async {
         if (error.response?.statusCode == 401 &&
-            !error.requestOptions.path.contains('/auth/refresh') &&
+            _shouldRefresh(error.requestOptions) &&
             error.requestOptions.extra['_kidarehRetried'] != true) {
           if (await _refresh()) {
             final request = error.requestOptions;
@@ -71,6 +71,16 @@ class DioProvider {
 
   final TokenStorage _storage = const TokenStorage();
 
+  bool _shouldRefresh(RequestOptions request) {
+    const nonRefreshablePaths = <String>{
+      '/auth/send-otp',
+      '/auth/verify-otp',
+      '/auth/refresh',
+      '/auth/logout',
+    };
+    return !nonRefreshablePaths.contains(request.path);
+  }
+
   Future<bool> _refresh() {
     final inFlight = _refreshFuture;
     if (inFlight != null) return inFlight;
@@ -92,6 +102,13 @@ class DioProvider {
       if (token is! String || token.isEmpty) return false;
       await _storage.write(token);
       return true;
+    } on DioException catch (error) {
+      // A rejected refresh token means the saved session is no longer usable.
+      // Network/server failures are transient and must not log the user out.
+      if (error.response?.statusCode == 401) {
+        await _storage.clear();
+      }
+      return false;
     } catch (_) {
       return false;
     }
