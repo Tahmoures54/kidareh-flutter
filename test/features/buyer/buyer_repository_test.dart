@@ -34,6 +34,29 @@ void main() {
     expect(result.nextCursor, 'abc');
   });
 
+  test('search forwards cursor, limit and sort contract', () async {
+    when(() => dio.get(
+      '/products/search',
+      queryParameters: any(named: 'queryParameters'),
+    )).thenAnswer((_) async => Response(
+      requestOptions: RequestOptions(path: '/products/search'),
+      data: {'products': [], 'hasMore': false},
+    ));
+
+    await repo.search('پیچ', cursor: 'v2:10', limit: 10);
+
+    verify(() => dio.get(
+      '/products/search',
+      queryParameters: {
+        'q': 'پیچ',
+        'limit': 10,
+        'cursor': 'v2:10',
+        'sort': 'newest',
+        'scope': 'all',
+      },
+    )).called(1);
+  });
+
   test('getProduct unwraps product payload', () async {
     when(() => dio.get('/products/12')).thenAnswer((_) async => Response(
       requestOptions: RequestOptions(path: '/products/12'),
