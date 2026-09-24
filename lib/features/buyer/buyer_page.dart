@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/models/product.dart';
 import '../../core/network/api_client.dart';
 import 'buyer_repository.dart';
+import 'city_picker.dart';
 
 class BuyerPage extends StatefulWidget {
   const BuyerPage({super.key});
@@ -17,7 +18,6 @@ class BuyerPage extends StatefulWidget {
 
 class _BuyerPageState extends State<BuyerPage> {
   final q = TextEditingController();
-  final city = TextEditingController();
   final scroll = ScrollController();
   final repo = BuyerRepository();
 
@@ -30,6 +30,7 @@ class _BuyerPageState extends State<BuyerPage> {
   bool showingCache = false;
   String? cursor;
   String? error;
+  String? selectedCity;
   String lastQuery = '';
   int _searchGeneration = 0;
 
@@ -49,7 +50,6 @@ class _BuyerPageState extends State<BuyerPage> {
   void dispose() {
     q.removeListener(_onQueryChanged);
     q.dispose();
-    city.dispose();
     scroll.dispose();
     super.dispose();
   }
@@ -75,7 +75,7 @@ class _BuyerPageState extends State<BuyerPage> {
       q.text = savedQuery;
       lastQuery = savedQuery;
     }
-    if (savedCity.isNotEmpty) city.text = savedCity;
+    if (savedCity.isNotEmpty) selectedCity = savedCity;
     if (raw != null && raw.isNotEmpty) {
       final decoded = jsonDecode(raw);
       if (decoded is List) {
@@ -93,7 +93,7 @@ class _BuyerPageState extends State<BuyerPage> {
   Future<void> _persist() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_queryKey, lastQuery);
-    await prefs.setString(_cityKey, city.text.trim());
+    await prefs.setString(_cityKey, selectedCity ?? '');
     await prefs.setString(
       _resultsKey,
       jsonEncode(items.take(20).map((item) => item.toJson()).toList()),
@@ -123,7 +123,7 @@ class _BuyerPageState extends State<BuyerPage> {
     _remember(query);
 
     try {
-      final page = await repo.search(query, city: city.text);
+      final page = await repo.search(query, city: selectedCity);
       if (!mounted || generation != _searchGeneration) return;
       setState(() {
         items
@@ -154,7 +154,7 @@ class _BuyerPageState extends State<BuyerPage> {
 
     final generation = _searchGeneration;
     try {
-      final page = await repo.search(lastQuery, cursor: cursor, city: city.text);
+      final page = await repo.search(lastQuery, cursor: cursor, city: selectedCity);
       if (!mounted || generation != _searchGeneration) return;
       setState(() {
         items.addAll(page.items);
@@ -190,6 +190,11 @@ class _BuyerPageState extends State<BuyerPage> {
       lastQuery = '';
       showingCache = false;
     });
+  }
+
+  void _onCityChanged(String? city) {
+    setState(() => selectedCity = city);
+    if (lastQuery.isNotEmpty) search(lastQuery);
   }
 
   Future<void> _call(String phone) async {
@@ -231,15 +236,7 @@ class _BuyerPageState extends State<BuyerPage> {
             ),
           ),
           const SizedBox(height: 10),
-          TextField(
-            controller: city,
-            textInputAction: TextInputAction.search,
-            onSubmitted: search,
-            decoration: const InputDecoration(
-              hintText: 'شهر (اختیاری)',
-              prefixIcon: Icon(Icons.location_city_outlined),
-            ),
-          ),
+          CityPickerField(city: selectedCity, onChanged: _onCityChanged),
           if (lastQuery.isEmpty && recentSearches.isNotEmpty) ...[
             const SizedBox(height: 20),
             const Text('جستجوهای اخیر', style: TextStyle(fontWeight: FontWeight.w800)),
@@ -340,17 +337,9 @@ class _BuyerPageState extends State<BuyerPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      product.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
+                    Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800)),
                     const SizedBox(height: 7),
-                    Text(
-                      product.priceLabel,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-                    ),
+                    Text(product.priceLabel, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
                     const SizedBox(height: 7),
                     Wrap(
                       spacing: 6,
@@ -358,10 +347,7 @@ class _BuyerPageState extends State<BuyerPage> {
                       children: [
                         Chip(
                           visualDensity: VisualDensity.compact,
-                          avatar: Icon(
-                            product.available ? Icons.check_circle_outline : Icons.remove_circle_outline,
-                            size: 16,
-                          ),
+                          avatar: Icon(product.available ? Icons.check_circle_outline : Icons.remove_circle_outline, size: 16),
                           label: Text(product.statusLabel),
                         ),
                         if (product.storeName.isNotEmpty)
