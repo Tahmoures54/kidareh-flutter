@@ -56,8 +56,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     final storeId = int.tryParse(item['store_id']?.toString() ?? '');
     final price = item['price'];
     final priceText = buyerPriceLabel(price);
-    final normalizedStatus = status.trim().toLowerCase();
-    final available = normalizedStatus == 'موجود' || normalizedStatus == 'فقط ۱ عدد' || normalizedStatus == 'available';
+    final available = isBuyerProductAvailable(status);
     return ListView(padding: const EdgeInsets.fromLTRB(16,16,16,32), children: [
       if (imageUrl.isNotEmpty) ...[
         ClipRRect(
