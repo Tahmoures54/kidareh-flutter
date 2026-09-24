@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'buyer_repository.dart';
+import '../../core/network/api_client.dart';
 import 'package:go_router/go_router.dart';
 
 class BuyerPage extends StatefulWidget {
@@ -77,8 +78,8 @@ class _BuyerPageState extends State<BuyerPage> {
         hasMore = page.hasMore;
         cursor = page.nextCursor;
       });
-    } catch (_) {
-      if (mounted) setState(() => error = 'دریافت کالاها انجام نشد');
+    } catch (e) {
+      if (mounted) setState(() => error = networkErrorMessage(e));
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -99,8 +100,8 @@ class _BuyerPageState extends State<BuyerPage> {
         hasMore = page.hasMore;
         cursor = page.nextCursor;
       });
-    } catch (_) {
-      if (mounted) setState(() => error = 'نتایج بعدی دریافت نشد');
+    } catch (e) {
+      if (mounted) setState(() => error = networkErrorMessage(e));
     } finally {
       if (mounted) setState(() => loadingMore = false);
     }
