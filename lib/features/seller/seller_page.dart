@@ -13,6 +13,22 @@ class SellerStatsRepository {
   }
 }
 
+class SellerFollowersRepository {
+  SellerFollowersRepository({Dio? dio}) : _dio = dio ?? dioProvider.dio;
+  final Dio _dio;
+
+  Future<List<Map<String, dynamic>>> fetchMyFollowers() async {
+    final response = await _dio.get('/stores/my/followers');
+    final data = response.data;
+    final raw = data is List ? data : data is Map ? data['followers'] : null;
+    if (raw is! List) throw const FormatException('فهرست دنبال‌کنندگان نامعتبر است');
+    return raw.whereType<Map>().map(Map<String, dynamic>.from).toList();
+  }
+}
+
+final sellerFollowersRepositoryProvider =
+    Provider<SellerFollowersRepository>((ref) => SellerFollowersRepository());
+
 class _StatTile extends StatelessWidget {
   const _StatTile({required this.icon, required this.label, required this.value});
   final IconData icon; final String label; final String value;
@@ -81,7 +97,50 @@ class SellerStoreRepository {
 
 class SellerPage extends ConsumerStatefulWidget {\n  const SellerPage({super.key});\n  @override\n  ConsumerState<SellerPage> createState() => _SellerPageState();\n}\n\nclass _SellerPageState extends ConsumerState<SellerPage> {\n  bool loading = true;\n  String? error;\n  List<Map<String, dynamic>> products = [];
   Map<String, dynamic>? stats;
-  bool statsLoading = false;\n\n  @override\n  void initState() { super.initState(); _load(); _loadStats(); }\n\n  Future<void> _loadStats() async {
+  bool statsLoading = false;
+
+  Future<void> _showFollowers() async {
+    try {
+      final followers = await ref.read(sellerFollowersRepositoryProvider).fetchMyFollowers();
+      if (!mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        builder: (sheetContext) => SafeArea(
+          child: SizedBox(
+            height: MediaQuery.of(sheetContext).size.height * 0.72,
+            child: followers.isEmpty
+                ? const Center(child: Text('هنوز کسی ویترین شما را دنبال نکرده است.'))
+                : ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                    itemCount: followers.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (_, index) {
+                      final follower = followers[index];
+                      final name = follower['name']?.toString().trim();
+                      final phone = follower['phone']?.toString().trim();
+                      final followedAt = follower['followed_at']?.toString().trim();
+                      return ListTile(
+                        leading: const CircleAvatar(child: Icon(Icons.person_outline)),
+                        title: Text(name?.isNotEmpty == true ? name! : 'دنبال‌کننده'),
+                        subtitle: Text([
+                          if (phone?.isNotEmpty == true) phone!,
+                          if (followedAt?.isNotEmpty == true) 'دنبال‌کردن: $followedAt',
+                        ].join(' • ')),
+                      );
+                    },
+                  ),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(networkErrorMessage(e))),
+        );
+      }
+    }
+  }\n\n  @override\n  void initState() { super.initState(); _load(); _loadStats(); }\n\n  Future<void> _loadStats() async {
     setState(() => statsLoading = true);
     try {
       final value = await ref.read(sellerStatsRepositoryProvider).fetchMyStats();
@@ -204,7 +263,7 @@ class SellerPage extends ConsumerStatefulWidget {\n  const SellerPage({super.key
     }
   }
 
-  Future<void> _createProduct() async {\n    final name = TextEditingController();\n    final price = TextEditingController();\n    final description = TextEditingController();\n    var status = 'موجود';\n    try {\n      final result = await showDialog<bool>(\n        context: context,\n        builder: (dialogContext) => StatefulBuilder(\n          builder: (dialogContext, setDialogState) => AlertDialog(\n            title: const Text('ثبت کالا'),\n            content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [\n              TextField(controller: name, autofocus: true, decoration: const InputDecoration(labelText: 'نام کالا')),\n              TextField(controller: price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'قیمت (تومان)')),\n              DropdownButtonFormField<String>(value: status, items: const [\n                DropdownMenuItem(value: 'موجود', child: Text('موجود')),\n                DropdownMenuItem(value: 'فقط ۱ عدد', child: Text('فقط ۱ عدد')),\n                DropdownMenuItem(value: 'ناموجود', child: Text('ناموجود')),\n              ], onChanged: (v) => setDialogState(() => status = v ?? status)),\n              TextField(controller: description, maxLines: 3, decoration: const InputDecoration(labelText: 'توضیحات (اختیاری)')),\n            ])),\n            actions: [\n              TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('انصراف')),\n              FilledButton(onPressed: () async {\n                final n = name.text.trim();\n                final p = num.tryParse(price.text.trim().replaceAll(',', ''));\n                if (n.isEmpty || p == null || p < 0) {\n                  ScaffoldMessenger.of(dialogContext).showSnackBar(const SnackBar(content: Text('نام و قیمت معتبر وارد کنید.')));\n                  return;\n                }\n                try {\n                  await ref.read(sellerRepositoryProvider).createProduct(name: n, price: p, status: status, description: description.text);\n                  if (dialogContext.mounted) Navigator.pop(dialogContext, true);\n                } catch (e) {\n                  if (dialogContext.mounted) ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text(networkErrorMessage(e))));\n                }\n              }, child: const Text('ثبت کالا')),\n            ],\n          ),\n        ),\n      );\n      if (result == true && mounted) {\n        await _load();\n        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('کالا ثبت شد.')));\n      }\n    } finally {\n      name.dispose(); price.dispose(); description.dispose();\n    }\n  }\n  Future<void> _load() async {\n    setState(() { loading = true; error = null; });\n    try {\n      final user = ref.read(authControllerProvider).valueOrNull;\n      final role = user?['role']?.toString();\n      if (role != 'seller' && role != 'admin') {\n        if (mounted) setState(() { products = []; loading = false; });\n        return;\n      }\n      final items = await ref.read(sellerRepositoryProvider).fetchProducts();\n      if (!mounted) return;\n      setState(() { products = items; loading = false; });\n    } catch (e) {\n      if (!mounted) return;\n      setState(() { error = networkErrorMessage(e); loading = false; });\n    }\n  }\n\n  @override\n  Widget build(BuildContext context) {\n    final user = ref.watch(authControllerProvider).valueOrNull;\n    final role = user?['role']?.toString();\n    final isSeller = role == 'seller' || role == 'admin';\n    return Scaffold(\n      appBar: AppBar(title: const Text('فروشگاه من'), actions: [IconButton(onPressed: _editStore, icon: const Icon(Icons.store_outlined)), IconButton(onPressed: loading ? null : _load, icon: const Icon(Icons.refresh))]),\n      body: RefreshIndicator(\n        onRefresh: _load,\n        child: ListView(\n          physics: const AlwaysScrollableScrollPhysics(),\n          padding: const EdgeInsets.all(20),\n          children: [\n            Card(child: ListTile(leading: const Icon(Icons.storefront_outlined), title: Text(user?['name']?.toString() ?? 'فروشگاه من'), subtitle: Text(isSeller ? 'مدیریت ویترین و کالاها' : 'حساب شما هنوز فروشنده نیست'))),\n            const SizedBox(height: 16),\n            if (!isSeller) const Card(child: ListTile(leading: Icon(Icons.add_business_outlined), title: Text('ثبت فروشگاه'), subtitle: Text('برای شروع فروش، فروشگاه خود را ثبت کنید.')))\n            else if (loading) const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))\n            else if (error != null) Card(child: ListTile(leading: const Icon(Icons.error_outline), title: const Text('دریافت کالاها ناموفق بود'), subtitle: Text(error!), trailing: IconButton(onPressed: _load, icon: const Icon(Icons.refresh))))\n            else if (products.isEmpty) ...[const Card(child: ListTile(leading: Icon(Icons.inventory_2_outlined), title: Text('هنوز کالایی ثبت نکرده‌اید'), subtitle: Text('اولین کالا را ثبت کنید تا در کی‌داره دیده شود.'))), const SizedBox(height: 8), FilledButton.icon(onPressed: _createProduct, icon: const Icon(Icons.add), label: const Text('ثبت اولین کالا'))]\n            else ...[\n              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('کالاهای من (' + products.length.toString() + ')', style: Theme.of(context).textTheme.titleMedium), FilledButton.icon(onPressed: _createProduct, icon: const Icon(Icons.add), label: const Text('افزودن کالا'))]),\n              const SizedBox(height: 8),\n              ...products.map((p) => Card(child: ListTile(title: Text(p['name']?.toString() ?? 'کالای بدون نام'), subtitle: Text('${p['price'] ?? 'قیمت توافقی'} • ${p['status'] ?? 'نامشخص'}'), trailing: PopupMenuButton<String>(onSelected: (action) { if (action == 'edit') _editProduct(p); if (action == 'delete') _deleteProduct(p); }, itemBuilder: (_) => const [PopupMenuItem(value: 'edit', child: Text('ویرایش')), PopupMenuItem(value: 'delete', child: Text('حذف'))]))),\n            ],\n          ],\n        ),\n      ),\n    );\n  }\n}).hasMatch(p)) {
+  Future<void> _createProduct() async {\n    final name = TextEditingController();\n    final price = TextEditingController();\n    final description = TextEditingController();\n    var status = 'موجود';\n    try {\n      final result = await showDialog<bool>(\n        context: context,\n        builder: (dialogContext) => StatefulBuilder(\n          builder: (dialogContext, setDialogState) => AlertDialog(\n            title: const Text('ثبت کالا'),\n            content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [\n              TextField(controller: name, autofocus: true, decoration: const InputDecoration(labelText: 'نام کالا')),\n              TextField(controller: price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'قیمت (تومان)')),\n              DropdownButtonFormField<String>(value: status, items: const [\n                DropdownMenuItem(value: 'موجود', child: Text('موجود')),\n                DropdownMenuItem(value: 'فقط ۱ عدد', child: Text('فقط ۱ عدد')),\n                DropdownMenuItem(value: 'ناموجود', child: Text('ناموجود')),\n              ], onChanged: (v) => setDialogState(() => status = v ?? status)),\n              TextField(controller: description, maxLines: 3, decoration: const InputDecoration(labelText: 'توضیحات (اختیاری)')),\n            ])),\n            actions: [\n              TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('انصراف')),\n              FilledButton(onPressed: () async {\n                final n = name.text.trim();\n                final p = num.tryParse(price.text.trim().replaceAll(',', ''));\n                if (n.isEmpty || p == null || p < 0) {\n                  ScaffoldMessenger.of(dialogContext).showSnackBar(const SnackBar(content: Text('نام و قیمت معتبر وارد کنید.')));\n                  return;\n                }\n                try {\n                  await ref.read(sellerRepositoryProvider).createProduct(name: n, price: p, status: status, description: description.text);\n                  if (dialogContext.mounted) Navigator.pop(dialogContext, true);\n                } catch (e) {\n                  if (dialogContext.mounted) ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text(networkErrorMessage(e))));\n                }\n              }, child: const Text('ثبت کالا')),\n            ],\n          ),\n        ),\n      );\n      if (result == true && mounted) {\n        await _load();\n        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('کالا ثبت شد.')));\n      }\n    } finally {\n      name.dispose(); price.dispose(); description.dispose();\n    }\n  }\n  Future<void> _load() async {\n    setState(() { loading = true; error = null; });\n    try {\n      final user = ref.read(authControllerProvider).valueOrNull;\n      final role = user?['role']?.toString();\n      if (role != 'seller' && role != 'admin') {\n        if (mounted) setState(() { products = []; loading = false; });\n        return;\n      }\n      final items = await ref.read(sellerRepositoryProvider).fetchProducts();\n      if (!mounted) return;\n      setState(() { products = items; loading = false; });\n    } catch (e) {\n      if (!mounted) return;\n      setState(() { error = networkErrorMessage(e); loading = false; });\n    }\n  }\n\n  @override\n  Widget build(BuildContext context) {\n    final user = ref.watch(authControllerProvider).valueOrNull;\n    final role = user?['role']?.toString();\n    final isSeller = role == 'seller' || role == 'admin';\n    return Scaffold(\n      appBar: AppBar(title: const Text('فروشگاه من'), actions: [IconButton(onPressed: _showFollowers, tooltip: 'دنبال‌کنندگان', icon: const Icon(Icons.people_outline)), IconButton(onPressed: _editStore, tooltip: 'ویرایش فروشگاه', icon: const Icon(Icons.store_outlined)), IconButton(onPressed: loading ? null : _load, tooltip: 'بازخوانی کالاها', icon: const Icon(Icons.refresh))]),\n      body: RefreshIndicator(\n        onRefresh: _load,\n        child: ListView(\n          physics: const AlwaysScrollableScrollPhysics(),\n          padding: const EdgeInsets.all(20),\n          children: [\n            Card(child: ListTile(leading: const Icon(Icons.storefront_outlined), title: Text(user?['name']?.toString() ?? 'فروشگاه من'), subtitle: Text(isSeller ? 'مدیریت ویترین و کالاها' : 'حساب شما هنوز فروشنده نیست'))),\n            const SizedBox(height: 16),\n            if (!isSeller) const Card(child: ListTile(leading: Icon(Icons.add_business_outlined), title: Text('ثبت فروشگاه'), subtitle: Text('برای شروع فروش، فروشگاه خود را ثبت کنید.')))\n            else if (loading) const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))\n            else if (error != null) Card(child: ListTile(leading: const Icon(Icons.error_outline), title: const Text('دریافت کالاها ناموفق بود'), subtitle: Text(error!), trailing: IconButton(onPressed: _load, icon: const Icon(Icons.refresh))))\n            else if (products.isEmpty) ...[const Card(child: ListTile(leading: Icon(Icons.inventory_2_outlined), title: Text('هنوز کالایی ثبت نکرده‌اید'), subtitle: Text('اولین کالا را ثبت کنید تا در کی‌داره دیده شود.'))), const SizedBox(height: 8), FilledButton.icon(onPressed: _createProduct, icon: const Icon(Icons.add), label: const Text('ثبت اولین کالا'))]\n            else ...[\n              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('کالاهای من (' + products.length.toString() + ')', style: Theme.of(context).textTheme.titleMedium), FilledButton.icon(onPressed: _createProduct, icon: const Icon(Icons.add), label: const Text('افزودن کالا'))]),\n              const SizedBox(height: 8),\n              ...products.map((p) => Card(child: ListTile(title: Text(p['name']?.toString() ?? 'کالای بدون نام'), subtitle: Text('${p['price'] ?? 'قیمت توافقی'} • ${p['status'] ?? 'نامشخص'}'), trailing: PopupMenuButton<String>(onSelected: (action) { if (action == 'edit') _editProduct(p); if (action == 'delete') _deleteProduct(p); }, itemBuilder: (_) => const [PopupMenuItem(value: 'edit', child: Text('ویرایش')), PopupMenuItem(value: 'delete', child: Text('حذف'))]))),\n            ],\n          ],\n        ),\n      ),\n    );\n  }\n}).hasMatch(p)) {
                 ScaffoldMessenger.of(dialogContext).showSnackBar(const SnackBar(content: Text('نام، آدرس و شماره تلفن معتبر وارد کنید.')));
                 return;
               }
