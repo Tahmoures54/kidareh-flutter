@@ -2,6 +2,8 @@ class IranCity {
   const IranCity(this.name, this.province);
   final String name;
   final String province;
+
+  String get label => province == name ? name : '$name — $province';
 }
 
 const iranCities = <IranCity>[
@@ -12,19 +14,24 @@ const iranCities = <IranCity>[
   IranCity('پرند', 'تهران'),
   IranCity('ورامین', 'تهران'),
   IranCity('قم', 'تهران'),
-  IranCity('مشهد', 'تهران'),
-  IranCity('کرجنو', 'تهران'),
-  IranCity('ملارد', 'تهران'),
-  IranCity('کرجک', 'تهران'),
   IranCity('شهریار', 'اصفهان'),
-  IranCity('نجف‌آباد', 'اصفهان'),
   IranCity('کاشان', 'اصفهان'),
+  IranCity('نجف‌آباد', 'اصفهان'),
   IranCity('خومینی‌شهر', 'اصفهان'),
-  IranCity('مشهد', 'اصفهان'),
   IranCity('مشهدرضا', 'اصفهان'),
-  IranCity('كرجان', 'اصفهان'),
   IranCity('برخوار', 'اصفهان'),
-  IranCity('مشهد', 'اصفهان'),
+  IranCity('نجف', 'اصفهان'),
+  IranCity('مشهد', 'خراسان رضوی'),
+  IranCity('سبزوار', 'خراسان رضوی'),
+  IranCity('نیشابور', 'خراسان رضوی'),
+  IranCity('تربت حیدریه', 'خراسان رضوی'),
+  IranCity('کاشمر', 'خراسان رضوی'),
+  IranCity('شیراز', 'فارس'),
+  IranCity('مرودشت', 'فارس'),
+  IranCity('جهرم', 'فارس'),
+  IranCity('کازرون', 'فارس'),
+  IranCity('فسا', 'فارس'),
+  IranCity('لار', 'فارس'),
   IranCity('تبریز', 'آذربایجان شرقی'),
   IranCity('مرند', 'آذربایجان شرقی'),
   IranCity('مراغه', 'آذربایجان شرقی'),
@@ -32,10 +39,8 @@ const iranCities = <IranCity>[
   IranCity('اهر', 'آذربایجان شرقی'),
   IranCity('ارومیه', 'آذربایجان شرقی'),
   IranCity('شبستر', 'آذربایجان شرقی'),
-  IranCity('اردبیل', 'آذربایجان شرقی'),
   IranCity('سراب', 'آذربایجان شرقی'),
-  IranCity('ارومیه', 'آذربایجان شرقی'),
-  IranCity('ارومیه', 'آذربایجان شرقی'),
+  IranCity('اردبیل', 'آذربایجان شرقی'),
   IranCity('ارومیه', 'آذربایجان شرقی'),
   IranCity('ارومیه', 'آذربایجان شرقی'),
   IranCity('ارومیه', 'آذربایجان شرقی'),
