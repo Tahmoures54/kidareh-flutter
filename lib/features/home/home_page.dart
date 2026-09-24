@@ -14,7 +14,7 @@ class HomePage extends StatelessWidget {
         children: [
           Text('همراه موبایل کی‌داره', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 8),
-          const Text('جستجو، تماس با فروشگاه و مدیریت کالا اینجاست. نقشه، چت، پرداخت و معرفی روی سایت کامل می‌ماند.'),
+          const Text('جستجو، تماس با فروشگاه و مدیریت کالا اینجاست. نقشه، چت و پرداخت روی سایت کامل می‌ماند.'),
           const SizedBox(height: 24),
           _Action(title: 'جستجوی کالا', icon: Icons.search, onTap: () => context.go('/buyer')),
           _Action(title: 'پنل فروشنده', icon: Icons.storefront_outlined, onTap: () => context.go('/seller')),

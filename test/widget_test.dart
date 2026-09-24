@@ -21,6 +21,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('کی‌داره؟'), findsOneWidget);
-    expect(find.text('ببین کی داره، حضوری بگیر'), findsOneWidget);
+    expect(find.text('همراه موبایل کی‌داره'), findsOneWidget);
+    expect(find.text('جستجوی کالا'), findsOneWidget);
+    expect(find.text('پنل فروشنده'), findsOneWidget);
+    expect(find.text('حساب کاربری'), findsOneWidget);
+    expect(find.text('معرفی و کیف پول'), findsNothing);
   });
 }
