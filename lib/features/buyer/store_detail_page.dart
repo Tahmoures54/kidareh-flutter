@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'buyer_repository.dart';
+import '../../core/network/api_client.dart';
 
 class StoreDetailPage extends StatefulWidget {
   const StoreDetailPage({super.key, required this.storeId});
@@ -15,7 +16,7 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
   Future<void> _load() async {
     setState(() { loading = true; error = null; });
     try { final data = await repo.getStore(widget.storeId); if (!mounted) return; setState(() { store=data; loading=false; }); }
-    catch (_) { if (mounted) setState(() { loading=false; error='اطلاعات فروشگاه دریافت نشد'; }); }
+    catch (e) { if (mounted) setState(() { loading=false; error=networkErrorMessage(e); }); }
   }
   Future<void> _open(Uri uri) async {
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication) && mounted) {
