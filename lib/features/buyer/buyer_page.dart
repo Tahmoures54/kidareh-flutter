@@ -227,9 +227,7 @@ class _BuyerPageState extends State<BuyerPage> {
     final store = (product['store_name'] ?? '').toString();
     final city = (product['store_city'] ?? product['city'] ?? '').toString();
 
-    final priceText = price is num && price > 0
-        ? '${price.toStringAsFixed(0)} تومان'
-        : 'قیمت توافقی';
+    final priceText = buyerPriceLabel(price);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
