@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/data/iran_cities.dart';
 
 class BlinkingGreenLight extends StatefulWidget {
@@ -50,6 +53,23 @@ class _BlinkingGreenLightState extends State<BlinkingGreenLight>
   }
 }
 
+/// Shared location item for city or village.
+class IranLocation {
+  const IranLocation({
+    required this.name,
+    required this.province,
+    required this.isVillage,
+  });
+
+  final String name;
+  final String province;
+  final bool isVillage;
+
+  String get subtitle => isVillage
+      ? (province.isEmpty ? 'روستا' : 'روستا · $province')
+      : province;
+}
+
 class CityPickerField extends StatelessWidget {
   const CityPickerField({super.key, required this.city, required this.onChanged});
 
@@ -57,7 +77,7 @@ class CityPickerField extends StatelessWidget {
   final ValueChanged<String?> onChanged;
 
   Future<void> _open(BuildContext context) async {
-    final selected = await showModalBottomSheet<IranCity>(
+    final selected = await showModalBottomSheet<IranLocation>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -83,7 +103,7 @@ class CityPickerField extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  selected ? city! : 'انتخاب شهر',
+                  selected ? city! : 'انتخاب شهر یا روستا',
                   style: TextStyle(
                     fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
                     color: selected ? null : Theme.of(context).hintColor,
@@ -92,8 +112,9 @@ class CityPickerField extends StatelessWidget {
               ),
               if (selected) ...[
                 const BlinkingGreenLight(),
+                const SizedBox(width: 8),
                 IconButton(
-                  tooltip: 'حذف شهر',
+                  tooltip: 'حذف',
                   visualDensity: VisualDensity.compact,
                   onPressed: () => onChanged(null),
                   icon: const Icon(Icons.close),
@@ -117,6 +138,9 @@ class _CityPickerSheet extends StatefulWidget {
 
 class _CityPickerSheetState extends State<_CityPickerSheet> {
   final query = TextEditingController();
+  List<IranLocation>? _villages;
+  bool _loadingVillages = false;
+  String? _villageError;
 
   @override
   void dispose() {
@@ -124,15 +148,73 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
     super.dispose();
   }
 
-  List<IranCity> get _filtered {
+  Future<void> _ensureVillages() async {
+    if (_villages != null || _loadingVillages) return;
+    setState(() {
+      _loadingVillages = true;
+      _villageError = null;
+    });
+    try {
+      final raw = await rootBundle.loadString('assets/data/iran_villages.json');
+      final list = jsonDecode(raw) as List<dynamic>;
+      final items = <IranLocation>[];
+      for (final e in list) {
+        final m = e as Map<String, dynamic>;
+        final name = (m['n'] as String?)?.trim() ?? '';
+        if (name.isEmpty) continue;
+        items.add(IranLocation(
+          name: name,
+          province: (m['p'] as String?) ?? '',
+          isVillage: true,
+        ));
+      }
+      if (!mounted) return;
+      setState(() {
+        _villages = items;
+        _loadingVillages = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingVillages = false;
+        _villageError = 'بارگذاری روستاها ناموفق بود';
+      });
+    }
+  }
+
+  List<IranLocation> get _filtered {
     final q = query.text.trim();
-    if (q.isEmpty) return iranCities;
-    return iranCities.where((city) => city.name.contains(q) || city.province.contains(q)).toList();
+    final cities = iranCities
+        .map((c) => IranLocation(name: c.name, province: c.province, isVillage: false))
+        .toList();
+
+    if (q.isEmpty) {
+      return cities;
+    }
+
+    final cityHits = cities
+        .where((c) => c.name.contains(q) || c.province.contains(q))
+        .toList();
+
+    final villages = _villages;
+    if (villages == null) {
+      if (q.length >= 2) {
+        _ensureVillages();
+      }
+      return cityHits;
+    }
+
+    final villageHits = villages
+        .where((v) => v.name.contains(q) || v.province.contains(q))
+        .take(200)
+        .toList();
+
+    return [...cityHits, ...villageHits];
   }
 
   @override
   Widget build(BuildContext context) {
-    final cities = _filtered;
+    final items = _filtered;
     return SafeArea(
       child: SizedBox(
         height: MediaQuery.of(context).size.height * 0.78,
@@ -142,7 +224,10 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
               padding: EdgeInsets.fromLTRB(20, 4, 20, 8),
               child: Align(
                 alignment: Alignment.centerRight,
-                child: Text('شهر را انتخاب کن', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+                child: Text(
+                  'شهر یا روستا را انتخاب کن',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+                ),
               ),
             ),
             Padding(
@@ -152,24 +237,47 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
                 autofocus: true,
                 onChanged: (_) => setState(() {}),
                 decoration: const InputDecoration(
-                  hintText: 'جستجوی شهر یا استان',
+                  hintText: 'جستجوی شهر، روستا یا استان',
                   prefixIcon: Icon(Icons.search),
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            if (_loadingVillages)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 6),
+                child: LinearProgressIndicator(minHeight: 2),
+              ),
+            if (_villageError != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Text(
+                  _villageError!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12),
+                ),
+              ),
+            const SizedBox(height: 4),
             Expanded(
-              child: cities.isEmpty
-                  ? const Center(child: Text('شهری پیدا نشد'))
+              child: items.isEmpty
+                  ? Center(
+                      child: Text(
+                        query.text.trim().isEmpty
+                            ? 'در حال نمایش شهرها…'
+                            : 'موردی پیدا نشد',
+                      ),
+                    )
                   : ListView.separated(
-                      itemCount: cities.length,
+                      itemCount: items.length,
                       separatorBuilder: (_, __) => const Divider(height: 1),
                       itemBuilder: (_, i) {
-                        final city = cities[i];
+                        final item = items[i];
                         return ListTile(
-                          title: Text(city.name),
-                          subtitle: Text(city.province),
-                          onTap: () => Navigator.pop(context, city),
+                          leading: Icon(
+                            item.isVillage ? Icons.holiday_village_outlined : Icons.location_city,
+                            size: 22,
+                          ),
+                          title: Text(item.name),
+                          subtitle: Text(item.subtitle),
+                          onTap: () => Navigator.pop(context, item),
                         );
                       },
                     ),
