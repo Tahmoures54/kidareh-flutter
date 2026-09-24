@@ -19,7 +19,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       // Wait for saved-session restoration before deciding whether a
       // protected route should go to login.
-      if (authState.isLoading) return null;
+      if (authState.isLoading || authState.hasError) return null;
 
       final loggedIn = authState.valueOrNull != null;
       final isAuth = state.matchedLocation == '/login';
