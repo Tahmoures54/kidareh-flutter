@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'buyer_repository.dart';
 
 class ProductDetailPage extends StatefulWidget {
@@ -22,12 +24,31 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       : error != null ? Center(child: FilledButton(onPressed: _load, child: Text(error!)))
       : item == null ? const Center(child: Text('کالا پیدا نشد')) : _content(context, item));
   }
+  Future<void> _openExternal(Uri uri) async {
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('امکان باز کردن این مورد وجود ندارد')));
+    }
+  }
+
+  Future<void> _callStore(String phone) => _openExternal(Uri(scheme: 'tel', path: phone));
+
+  Future<void> _openMap(Map<String, dynamic> item, String address) async {
+    final lat = double.tryParse(item['lat']?.toString() ?? item['latitude']?.toString() ?? '');
+    final lng = double.tryParse(item['lng']?.toString() ?? item['longitude']?.toString() ?? '');
+    final label = Uri.encodeComponent(address.isNotEmpty ? address : 'فروشگاه کی‌داره');
+    final uri = lat != null && lng != null
+        ? Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng')
+        : Uri.parse('https://www.google.com/maps/search/?api=1&query=$label');
+    await _openExternal(uri);
+  }
+
   Widget _content(BuildContext context, Map<String, dynamic> item) {
     final name = (item['name'] ?? item['title'] ?? 'کالا').toString();
     final status = (item['status'] ?? 'ناموجود').toString();
     final store = (item['store_name'] ?? '').toString();
     final city = (item['store_city'] ?? item['city'] ?? '').toString();
     final address = (item['address'] ?? item['store_address'] ?? '').toString();
+    final phone = (item['store_phone'] ?? item['phone'] ?? '').toString().trim();
     final description = (item['description'] ?? '').toString();
     final price = item['price'];
     final priceText = price is num && price > 0 ? '${price.toStringAsFixed(0)} تومان' : 'قیمت توافقی';
@@ -38,7 +59,35 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       Row(children: [Expanded(child: Text(priceText, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800))),
         Chip(label: Text(status), avatar: Icon(available ? Icons.check_circle_outline : Icons.remove_circle_outline, size: 18))]),
       if (store.isNotEmpty || city.isNotEmpty) Card(child: ListTile(leading: const Icon(Icons.storefront_outlined), title: Text(store.isNotEmpty ? store : 'فروشگاه'), subtitle: city.isNotEmpty ? Text(city) : null)),
-      if (address.isNotEmpty) Card(child: ListTile(leading: const Icon(Icons.location_on_outlined), title: const Text('آدرس فروشگاه'), subtitle: Text(address))),
+      if (address.isNotEmpty)
+        Card(child: ListTile(
+          leading: const Icon(Icons.location_on_outlined),
+          title: const Text('آدرس فروشگاه'),
+          subtitle: Text(address),
+          trailing: IconButton(
+            tooltip: 'مسیریابی',
+            onPressed: () => _openMap(item, address),
+            icon: const Icon(Icons.directions_outlined),
+          ),
+        )),
+      if (store.isNotEmpty || phone.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        Row(children: [
+          if (store.isNotEmpty && item['store_id'] != null)
+            Expanded(child: OutlinedButton.icon(
+              onPressed: () => context.push('/stores/${item['store_id']}'),
+              icon: const Icon(Icons.storefront_outlined),
+              label: const Text('مشاهده فروشگاه'),
+            )),
+          if (store.isNotEmpty && phone.isNotEmpty && item['store_id'] != null) const SizedBox(width: 8),
+          if (phone.isNotEmpty)
+            Expanded(child: FilledButton.icon(
+              onPressed: () => _callStore(phone),
+              icon: const Icon(Icons.phone_outlined),
+              label: const Text('تماس با فروشگاه'),
+            )),
+        ]),
+      ],
       if (description.isNotEmpty) ...[const SizedBox(height:16), const Text('توضیحات', style: TextStyle(fontWeight: FontWeight.w800)), const SizedBox(height:6), Text(description)],
       const SizedBox(height:24),
       Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(available ? 'خرید این کالا به‌صورت حضوری از فروشگاه انجام می‌شود.' : 'این کالا در حال حاضر موجود نیست؛ برای اطلاع از موجودی می‌توانی با فروشگاه تماس بگیری.'))),
