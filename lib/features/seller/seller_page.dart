@@ -1,5 +1,29 @@
 import 'package:dio/dio.dart';\nimport 'package:flutter/material.dart';\nimport 'package:flutter_riverpod/flutter_riverpod.dart';\nimport '../auth/auth_controller.dart';\nimport '../../core/network/api_client.dart';\n\nfinal sellerRepositoryProvider = Provider<SellerRepository>((ref) => SellerRepository());
-final sellerStoreRepositoryProvider = Provider<SellerStoreRepository>((ref) => SellerStoreRepository());\n\nclass SellerRepository {\n  SellerRepository({Dio? dio}) : _dio = dio ?? dioProvider.dio;\n  final Dio _dio;\n\n  Future<List<Map<String, dynamic>>> fetchProducts() async {\n    final response = await _dio.get('/products/seller');\n    final data = response.data;\n    final raw = data is List ? data : data is Map ? data['products'] : null;\n    if (raw is! List) throw const FormatException('فهرست کالاهای فروشنده نامعتبر است');\n    return raw.whereType<Map>().map(Map<String, dynamic>.from).toList();\n  }\n\n  Future<void> deleteProduct(int id) async {
+final sellerStoreRepositoryProvider = Provider<SellerStoreRepository>((ref) => SellerStoreRepository());
+final sellerStatsRepositoryProvider = Provider<SellerStatsRepository>((ref) => SellerStatsRepository());
+
+class SellerStatsRepository {
+  SellerStatsRepository({Dio? dio}) : _dio = dio ?? dioProvider.dio;
+  final Dio _dio;
+  Future<Map<String, dynamic>> fetchMyStats() async {
+    final response = await _dio.get('/stores/my/stats');
+    final data = response.data;
+    if (data is! Map) throw const FormatException('آمار فروشگاه نامعتبر است');
+    return Map<String, dynamic>.from(data);
+  }
+}
+
+class _StatTile extends StatelessWidget {
+  const _StatTile({required this.icon, required this.label, required this.value});
+  final IconData icon; final String label; final String value;
+  @override Widget build(BuildContext context) => Row(children: [
+    Icon(icon, size: 22), const SizedBox(width: 8),
+    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(value, style: Theme.of(context).textTheme.titleMedium),
+      Text(label, style: Theme.of(context).textTheme.bodySmall),
+    ]),
+  ]);
+}\n\nclass SellerRepository {\n  SellerRepository({Dio? dio}) : _dio = dio ?? dioProvider.dio;\n  final Dio _dio;\n\n  Future<List<Map<String, dynamic>>> fetchProducts() async {\n    final response = await _dio.get('/products/seller');\n    final data = response.data;\n    final raw = data is List ? data : data is Map ? data['products'] : null;\n    if (raw is! List) throw const FormatException('فهرست کالاهای فروشنده نامعتبر است');\n    return raw.whereType<Map>().map(Map<String, dynamic>.from).toList();\n  }\n\n  Future<void> deleteProduct(int id) async {
     await _dio.delete('/products/$id');
   }
 
@@ -55,7 +79,20 @@ class SellerStoreRepository {
   }
 }
 
-class SellerPage extends ConsumerStatefulWidget {\n  const SellerPage({super.key});\n  @override\n  ConsumerState<SellerPage> createState() => _SellerPageState();\n}\n\nclass _SellerPageState extends ConsumerState<SellerPage> {\n  bool loading = true;\n  String? error;\n  List<Map<String, dynamic>> products = [];\n\n  @override\n  void initState() { super.initState(); _load(); }\n\n  Future<void> _editStore() async {
+class SellerPage extends ConsumerStatefulWidget {\n  const SellerPage({super.key});\n  @override\n  ConsumerState<SellerPage> createState() => _SellerPageState();\n}\n\nclass _SellerPageState extends ConsumerState<SellerPage> {\n  bool loading = true;\n  String? error;\n  List<Map<String, dynamic>> products = [];
+  Map<String, dynamic>? stats;
+  bool statsLoading = false;\n\n  @override\n  void initState() { super.initState(); _load(); _loadStats(); }\n\n  Future<void> _loadStats() async {
+    setState(() => statsLoading = true);
+    try {
+      final value = await ref.read(sellerStatsRepositoryProvider).fetchMyStats();
+      if (mounted) setState(() => stats = value);
+    } catch (_) {
+      if (mounted) setState(() => stats = null);
+    } finally {
+      if (mounted) setState(() => statsLoading = false);
+    }
+  }
+  Future<void> _editStore() async {
     Map<String, dynamic> store;
     try {
       store = await ref.read(sellerStoreRepositoryProvider).fetchMyStore();
