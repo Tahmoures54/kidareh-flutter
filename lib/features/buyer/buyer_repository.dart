@@ -5,7 +5,16 @@ bool isBuyerProductAvailable(Object? status) {
 }
 
 String buyerPriceLabel(Object? value) {
-  if (value is num && value > 0) return '${value.toStringAsFixed(0)} تومان';
+  if (value is num && value > 0) {
+    return '\${value.toStringAsFixed(0)} تومان';
+  }
+  if (value is String) {
+    final normalized = value.trim().replaceAll(',', '');
+    final parsed = num.tryParse(normalized);
+    if (parsed != null && parsed > 0) {
+      return '\${parsed.toStringAsFixed(0)} تومان';
+    }
+  }
   return 'قیمت توافقی';
 }
 
