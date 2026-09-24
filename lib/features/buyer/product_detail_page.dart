@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'buyer_repository.dart';
+import '../../core/network/api_client.dart';
 
 class ProductDetailPage extends StatefulWidget {
   const ProductDetailPage({super.key, required this.productId});
@@ -16,7 +17,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   Future<void> _load() async {
     setState(() { loading = true; error = null; });
     try { final result = await repo.getProduct(widget.productId); if (!mounted) return; setState(() { product = result; loading = false; }); }
-    catch (_) { if (mounted) setState(() { loading = false; error = 'اطلاعات کالا دریافت نشد'; }); }
+    catch (e) { if (mounted) setState(() { loading = false; error = networkErrorMessage(e); }); }
   }
   @override Widget build(BuildContext context) {
     final item = product;
