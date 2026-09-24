@@ -99,10 +99,56 @@ class _SellerPageState extends ConsumerState<SellerPage> {
 
   Future<void> _showFollowers() async {
     try {
-      final followers = await ref.read(sellerFollowersRepositoryProvider).fetchMyFollowers();
+      final followers =
+          await ref.read(sellerFollowersRepositoryProvider).fetchMyFollowers();
       if (!mounted) return;
-      await showModalBottomSheet<void>(context: context, showDragHandle: true, builder: (_) => SafeArea(child: SizedBox(height: MediaQuery.of(context).size.height * .72, child: followers.isEmpty ? const Center(child: Text('هنوز کسی ویترین شما را دنبال نکرده است.')) : ListView.separated(padding: const EdgeInsets.all(20), itemCount: followers.length, separatorBuilder: (_, __) => const Divider(), itemBuilder: (_, i) { final f = followers[i]; return ListTile(leading: const CircleAvatar(child: Icon(Icons.person_outline)), title: Text(f['name']?.toString().trim().isNotEmpty == true ? f['name'].toString() : 'دنبال‌کننده'), subtitle: Text([if (f['phone']?.toString().trim().isNotEmpty == true) f['phone'].toString(), if (f['followed_at']?.toString().trim().isNotEmpty == true) 'دنبال‌کردن: ${f['followed_at']}'].join(' • '))); })));
-    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(networkErrorMessage(e)))); }
+
+      await showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        builder: (_) => SafeArea(
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * .72,
+            child: followers.isEmpty
+                ? const Center(
+                    child: Text('هنوز کسی ویترین شما را دنبال نکرده است.'),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.all(20),
+                    itemCount: followers.length,
+                    separatorBuilder: (_, __) => const Divider(),
+                    itemBuilder: (_, i) {
+                      final f = followers[i];
+                      final name = f['name']?.toString().trim();
+                      final phone = f['phone']?.toString().trim();
+                      final followedAt = f['followed_at']?.toString().trim();
+                      final details = [
+                        if (phone?.isNotEmpty == true) phone!,
+                        if (followedAt?.isNotEmpty == true)
+                          'دنبال‌کردن: $followedAt',
+                      ].join(' • ');
+
+                      return ListTile(
+                        leading: const CircleAvatar(
+                          child: Icon(Icons.person_outline),
+                        ),
+                        title: Text(
+                          name?.isNotEmpty == true ? name! : 'دنبال‌کننده',
+                        ),
+                        subtitle: details.isEmpty ? null : Text(details),
+                      );
+                    },
+                  ),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(networkErrorMessage(e))),
+        );
+      }
+    }
   }
 
   Future<void> _editStore() async {
@@ -117,13 +163,140 @@ class _SellerPageState extends ConsumerState<SellerPage> {
     } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(networkErrorMessage(e)))); }
   }
 
-  Future<void> _productDialog({Map<String,dynamic>? product}) async {
-    final editing = product != null, name=TextEditingController(text: product?['name']?.toString()??''), price=TextEditingController(text: product?['price']?.toString()??''), description=TextEditingController(text: product?['description']?.toString()??'');
-    var status=product?['status']?.toString()??'موجود';
+  Future<void> _productDialog({Map<String, dynamic>? product}) async {
+    final editing = product != null;
+    final name =
+        TextEditingController(text: product?['name']?.toString() ?? '');
+    final price =
+        TextEditingController(text: product?['price']?.toString() ?? '');
+    final description = TextEditingController(
+      text: product?['description']?.toString() ?? '',
+    );
+    var status = product?['status']?.toString() ?? 'موجود';
+
     try {
-      final ok=await showDialog<bool>(context:context,builder:(dc)=>StatefulBuilder(builder:(dc,set)=>AlertDialog(title:Text(editing?'ویرایش کالا':'ثبت کالا'),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[TextField(controller:name,autofocus:true,decoration:const InputDecoration(labelText:'نام کالا')),TextField(controller:price,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'قیمت (تومان)')),DropdownButtonFormField<String>(value:status,items:const[DropdownMenuItem(value:'موجود',child:Text('موجود')),DropdownMenuItem(value:'فقط ۱ عدد',child:Text('فقط ۱ عدد')),DropdownMenuItem(value:'ناموجود',child:Text('ناموجود'))],onChanged:(v)=>set(()=>status=v??status)),TextField(controller:description,maxLines:3,decoration:const InputDecoration(labelText:'توضیحات (اختیاری)'))])),actions:[TextButton(onPressed:()=>Navigator.pop(dc,false),child:const Text('انصراف')),FilledButton(onPressed:()async{final n=name.text.trim(),raw=price.text.trim().replaceAll(',','');final p=num.tryParse(raw);if(n.isEmpty||p==null||p<0){ScaffoldMessenger.of(dc).showSnackBar(const SnackBar(content:Text('نام و قیمت معتبر وارد کنید.')));return;}try{final repo=ref.read(sellerRepositoryProvider);if(editing){await repo.updateProduct(int.parse(product['id'].toString()),name:n,price:p,status:status,description:description.text);}else{await repo.createProduct(name:n,price:p,status:status,description:description.text);}if(dc.mounted)Navigator.pop(dc,true);}catch(e){if(dc.mounted)ScaffoldMessenger.of(dc).showSnackBar(SnackBar(content:Text(networkErrorMessage(e))));}},child:Text(editing?'ذخیره':'ثبت کالا'))]));
-      if(ok==true&&mounted){await _load();await _loadStats();ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(editing?'کالا بروزرسانی شد.':'کالا ثبت شد.')));}
-    } finally {name.dispose();price.dispose();description.dispose();}
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (dc) => StatefulBuilder(
+          builder: (dc, set) => AlertDialog(
+            title: Text(editing ? 'ویرایش کالا' : 'ثبت کالا'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: name,
+                    autofocus: true,
+                    decoration:
+                        const InputDecoration(labelText: 'نام کالا'),
+                  ),
+                  TextField(
+                    controller: price,
+                    keyboardType: TextInputType.number,
+                    decoration:
+                        const InputDecoration(labelText: 'قیمت (تومان)'),
+                  ),
+                  DropdownButtonFormField<String>(
+                    value: status,
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'موجود',
+                        child: Text('موجود'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'فقط ۱ عدد',
+                        child: Text('فقط ۱ عدد'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'ناموجود',
+                        child: Text('ناموجود'),
+                      ),
+                    ],
+                    onChanged: (value) =>
+                        set(() => status = value ?? status),
+                  ),
+                  TextField(
+                    controller: description,
+                    maxLines: 3,
+                    decoration:
+                        const InputDecoration(labelText: 'توضیحات (اختیاری)'),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dc, false),
+                child: const Text('انصراف'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  final n = name.text.trim();
+                  final raw = price.text.trim().replaceAll(',', '');
+                  final p = num.tryParse(raw);
+
+                  if (n.isEmpty || p == null || p < 0) {
+                    ScaffoldMessenger.of(dc).showSnackBar(
+                      const SnackBar(
+                        content: Text('نام و قیمت معتبر وارد کنید.'),
+                      ),
+                    );
+                    return;
+                  }
+
+                  try {
+                    final repo = ref.read(sellerRepositoryProvider);
+                    if (editing) {
+                      await repo.updateProduct(
+                        int.parse(product['id'].toString()),
+                        name: n,
+                        price: p,
+                        status: status,
+                        description: description.text,
+                      );
+                    } else {
+                      await repo.createProduct(
+                        name: n,
+                        price: p,
+                        status: status,
+                        description: description.text,
+                      );
+                    }
+
+                    if (dc.mounted) {
+                      Navigator.pop(dc, true);
+                    }
+                  } catch (e) {
+                    if (dc.mounted) {
+                      ScaffoldMessenger.of(dc).showSnackBar(
+                        SnackBar(content: Text(networkErrorMessage(e))),
+                      );
+                    }
+                  }
+                },
+                child: Text(editing ? 'ذخیره' : 'ثبت کالا'),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      if (ok == true && mounted) {
+        await _load();
+        await _loadStats();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              editing ? 'کالا بروزرسانی شد.' : 'کالا ثبت شد.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      name.dispose();
+      price.dispose();
+      description.dispose();
+    }
   }
 
   Future<void> _deleteProduct(Map<String,dynamic> product) async {
