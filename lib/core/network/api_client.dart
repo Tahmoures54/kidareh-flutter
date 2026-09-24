@@ -1,4 +1,27 @@
 import 'package:dio/dio.dart';
+
+String networkErrorMessage(Object error) {
+  if (error is DioException) {
+    switch (error.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+        return 'ارتباط با سرور زمان‌بر شد. دوباره تلاش کن.';
+      case DioExceptionType.connectionError:
+        return 'اتصال اینترنت برقرار نیست. اینترنت را بررسی کن و دوباره تلاش کن.';
+      case DioExceptionType.badResponse:
+        final code = error.response?.statusCode;
+        if (code != null && code >= 500) return 'سرور موقتاً در دسترس نیست. دوباره تلاش کن.';
+        if (code == 404) return 'این مورد پیدا نشد.';
+        break;
+      case DioExceptionType.cancel:
+        return 'درخواست لغو شد.';
+      default:
+        break;
+    }
+  }
+  return 'ارتباط با سرور انجام نشد. دوباره تلاش کن.';
+}
 import '../config/api_config.dart';
 import '../storage/token_storage.dart';
 
