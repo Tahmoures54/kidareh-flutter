@@ -9,7 +9,7 @@ class _TestAuthController extends AuthController {
 }
 
 void main() {
-  testWidgets('app starts', (tester) async {
+  testWidgets('app starts on search', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -20,11 +20,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('کی‌داره؟'), findsOneWidget);
-    expect(find.text('همراه موبایل کی‌داره'), findsOneWidget);
-    expect(find.text('جستجوی کالا'), findsOneWidget);
-    expect(find.text('پنل فروشنده'), findsOneWidget);
-    expect(find.text('حساب کاربری'), findsOneWidget);
-    expect(find.text('معرفی و کیف پول'), findsNothing);
+    expect(find.text('پیدا کردن کالا'), findsOneWidget);
+    expect(find.text('جستجو'), findsWidgets);
+    expect(find.text('فروشگاه'), findsOneWidget);
+    expect(find.text('حساب'), findsOneWidget);
   });
 }
