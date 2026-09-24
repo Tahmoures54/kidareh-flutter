@@ -1,7 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/data/iran_cities.dart';
 
 class BlinkingGreenLight extends StatefulWidget {
@@ -68,6 +69,97 @@ class IranLocation {
   String get subtitle => isVillage
       ? (province.isEmpty ? 'روستا' : 'روستا · $province')
       : province;
+}
+
+/// Lazy loader for villages from official sajaddp dataset (cached).
+class IranVillagesLoader {
+  IranVillagesLoader._();
+  static final IranVillagesLoader instance = IranVillagesLoader._();
+
+  static const _cacheKey = 'iran_villages_v1';
+  static const _url =
+      'https://raw.githubusercontent.com/sajaddp/list-of-cities-in-Iran/main/dist/json/villages.json';
+  static const _provincesUrl =
+      'https://raw.githubusercontent.com/sajaddp/list-of-cities-in-Iran/main/dist/json/provinces.json';
+
+  List<IranLocation>? _cache;
+  Future<List<IranLocation>>? _inFlight;
+
+  Future<List<IranLocation>> load() {
+    if (_cache != null) return Future.value(_cache!);
+    return _inFlight ??= _load();
+  }
+
+  Future<List<IranLocation>> _load() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getString(_cacheKey);
+      if (cached != null && cached.isNotEmpty) {
+        final list = _parseCompact(cached);
+        if (list.isNotEmpty) {
+          _cache = list;
+          return list;
+        }
+      }
+
+      final results = await Future.wait([
+        http.get(Uri.parse(_url)).timeout(const Duration(seconds: 45)),
+        http.get(Uri.parse(_provincesUrl)).timeout(const Duration(seconds: 15)),
+      ]);
+      final villagesRes = results[0];
+      final provincesRes = results[1];
+      if (villagesRes.statusCode != 200) {
+        throw Exception('villages HTTP ${villagesRes.statusCode}');
+      }
+
+      final provMap = <int, String>{};
+      if (provincesRes.statusCode == 200) {
+        final provList = jsonDecode(provincesRes.body) as List<dynamic>;
+        for (final p in provList) {
+          final m = p as Map<String, dynamic>;
+          final id = m['id'];
+          final name = m['name'] as String? ?? '';
+          if (id is int) provMap[id] = name;
+        }
+      }
+
+      final raw = jsonDecode(villagesRes.body) as List<dynamic>;
+      final seen = <String>{};
+      final items = <IranLocation>[];
+      for (final e in raw) {
+        final m = e as Map<String, dynamic>;
+        final name = (m['name'] as String?)?.trim() ?? '';
+        if (name.isEmpty || !seen.add(name)) continue;
+        final pid = m['province_id'];
+        final province = pid is int ? (provMap[pid] ?? '') : '';
+        items.add(IranLocation(name: name, province: province, isVillage: true));
+      }
+      items.sort((a, b) => a.name.compareTo(b.name));
+
+      final compact = items.map((e) => [e.name, e.province]).toList();
+      await prefs.setString(_cacheKey, jsonEncode(compact));
+
+      _cache = items;
+      return items;
+    } catch (_) {
+      _inFlight = null;
+      rethrow;
+    }
+  }
+
+  List<IranLocation> _parseCompact(String cached) {
+    final list = jsonDecode(cached) as List<dynamic>;
+    final items = <IranLocation>[];
+    for (final e in list) {
+      if (e is List && e.isNotEmpty) {
+        final name = e[0]?.toString() ?? '';
+        final province = e.length > 1 ? (e[1]?.toString() ?? '') : '';
+        if (name.isEmpty) continue;
+        items.add(IranLocation(name: name, province: province, isVillage: true));
+      }
+    }
+    return items;
+  }
 }
 
 class CityPickerField extends StatelessWidget {
@@ -155,29 +247,17 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
       _villageError = null;
     });
     try {
-      final raw = await rootBundle.loadString('assets/data/iran_villages.json');
-      final list = jsonDecode(raw) as List<dynamic>;
-      final items = <IranLocation>[];
-      for (final e in list) {
-        final m = e as Map<String, dynamic>;
-        final name = (m['n'] as String?)?.trim() ?? '';
-        if (name.isEmpty) continue;
-        items.add(IranLocation(
-          name: name,
-          province: (m['p'] as String?) ?? '',
-          isVillage: true,
-        ));
-      }
+      final items = await IranVillagesLoader.instance.load();
       if (!mounted) return;
       setState(() {
         _villages = items;
         _loadingVillages = false;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         _loadingVillages = false;
-        _villageError = 'بارگذاری روستاها ناموفق بود';
+        _villageError = 'بارگذاری روستاها ناموفق بود (اینترنت لازم است)';
       });
     }
   }
@@ -188,9 +268,7 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
         .map((c) => IranLocation(name: c.name, province: c.province, isVillage: false))
         .toList();
 
-    if (q.isEmpty) {
-      return cities;
-    }
+    if (q.isEmpty) return cities;
 
     final cityHits = cities
         .where((c) => c.name.contains(q) || c.province.contains(q))
@@ -198,9 +276,7 @@ class _CityPickerSheetState extends State<_CityPickerSheet> {
 
     final villages = _villages;
     if (villages == null) {
-      if (q.length >= 2) {
-        _ensureVillages();
-      }
+      if (q.length >= 2) _ensureVillages();
       return cityHits;
     }
 
