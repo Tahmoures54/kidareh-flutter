@@ -10,7 +10,8 @@ void main() {
   test('price label treats zero, null and strings as agreement price', () {
     expect(buyerPriceLabel(0), 'قیمت توافقی');
     expect(buyerPriceLabel(null), 'قیمت توافقی');
-    expect(buyerPriceLabel('125000'), 'قیمت توافقی');
+    expect(buyerPriceLabel('125000'), '125000 تومان');
+    expect(buyerPriceLabel('125,000'), '125000 تومان');
   });
 
   test('availability matches supported backend statuses', () {
