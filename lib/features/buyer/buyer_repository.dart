@@ -87,6 +87,7 @@ class BuyerRepository {
   }
 
   Future<Map<String, dynamic>> getProduct(int id) async {
+    if (id <= 0) throw const FormatException('شناسه کالا نامعتبر است');
     final response = await _dio.get('/products/$id');
     final data = response.data;
     if (data is Map) {
@@ -97,9 +98,11 @@ class BuyerRepository {
   }
 
   Future<Map<String, dynamic>> getStore(int id) async {
+    if (id <= 0) throw const FormatException('شناسه فروشگاه نامعتبر است');
     final response = await _dio.get('/stores/$id');
     final data = response.data;
-    if (data is Map) return Map<String, dynamic>.from(data);
+    final raw = data is Map && data['store'] is Map ? data['store'] : data;
+    if (raw is Map) return Map<String, dynamic>.from(raw);
     throw const FormatException('اطلاعات فروشگاه نامعتبر است');
   }
 }
