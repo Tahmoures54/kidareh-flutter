@@ -13,13 +13,21 @@ class AuthRepository {
   Future<Map<String,dynamic>> verifyOtp(String phone,String code) async {
     final r=await _dio.post('/auth/verify-otp',data:{'phone':phone,'code':code},
       options:Options(headers:{'X-Kidareh-Client':'mobile'}));
-    final token=r.data['accessToken'] as String?;
-    if(token!=null && token.isNotEmpty) await _storage.write(token);
-    return Map<String,dynamic>.from(r.data);
+    final data = r.data;
+    if (data is! Map) throw const FormatException('پاسخ ورود نامعتبر است');
+    final token = data['accessToken'];
+    if (token is! String || token.isEmpty) {
+      throw const FormatException('توکن ورود نامعتبر است');
+    }
+    await _storage.write(token);
+    return Map<String,dynamic>.from(data);
   }
 
-  Future<Map<String,dynamic>> me() async =>
-    Map<String,dynamic>.from((await _dio.get('/auth/me')).data);
+  Future<Map<String,dynamic>> me() async {
+    final data = (await _dio.get('/auth/me')).data;
+    if (data is! Map) throw const FormatException('پاسخ حساب کاربری نامعتبر است');
+    return Map<String,dynamic>.from(data);
+  }
 
   Future<void> logout() async { try{await _dio.post('/auth/logout');}finally{await _storage.clear();} }
 }
