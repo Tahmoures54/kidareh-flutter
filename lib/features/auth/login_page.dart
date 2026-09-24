@@ -12,11 +12,17 @@ class LoginPage extends ConsumerStatefulWidget {
 class _LoginPageState extends ConsumerState<LoginPage> {
   final phone = TextEditingController();
   final code = TextEditingController();
+  final codeFocus = FocusNode();
   bool sent = false, busy = false;
   String? error;
 
   @override
-  void dispose() { phone.dispose(); code.dispose(); super.dispose(); }
+  void dispose() {
+    phone.dispose();
+    code.dispose();
+    codeFocus.dispose();
+    super.dispose();
+  }
 
   String _errorMessage(Object e) {
     if (e is FormatException) return e.message.toString();
@@ -37,7 +43,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         await repo.sendOtp(phone.text.trim());
         if (!mounted) return;
         setState(() => sent = true);
-        FocusScope.of(context).requestFocus(FocusNode());
+        codeFocus.requestFocus();
       } else {
         final r = await repo.verifyOtp(phone.text.trim(), code.text.trim());
         final rawUser = r['user'];
@@ -69,7 +75,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       TextField(controller: phone, enabled: !sent && !busy, keyboardType: TextInputType.phone, textInputAction: TextInputAction.done, onSubmitted: (_) => submit(), decoration: const InputDecoration(labelText: 'شماره موبایل', hintText: '09123456789')),
       if (sent) ...[
         const SizedBox(height: 12),
-        TextField(controller: code, enabled: !busy, autofocus: true, keyboardType: TextInputType.number, textInputAction: TextInputAction.done, maxLength: 5, onSubmitted: (_) => submit(), decoration: const InputDecoration(labelText: 'کد تأیید', hintText: 'کد ۵ رقمی'),),
+        TextField(controller: code, enabled: !busy, focusNode: codeFocus, keyboardType: TextInputType.number, textInputAction: TextInputAction.done, maxLength: 5, onSubmitted: (_) => submit(), decoration: const InputDecoration(labelText: 'کد تأیید', hintText: 'کد ۵ رقمی'),),
         Align(alignment: Alignment.centerRight, child: TextButton(onPressed: busy ? null : editPhone, child: const Text('ویرایش شماره'))),
       ],
       if (error != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
