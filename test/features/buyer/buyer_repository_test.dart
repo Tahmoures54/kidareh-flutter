@@ -57,6 +57,33 @@ void main() {
     )).called(1);
   });
 
+  test('search rejects malformed products payload', () async {
+    when(() => dio.get(
+      '/products/search',
+      queryParameters: any(named: 'queryParameters'),
+    )).thenAnswer((_) async => Response(
+      requestOptions: RequestOptions(path: '/products/search'),
+      data: {'products': 'invalid'},
+    ));
+
+    expect(
+      () => repo.search('کالا'),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
+  test('getProduct rejects malformed payloads', () async {
+    when(() => dio.get('/products/12')).thenAnswer((_) async => Response(
+      requestOptions: RequestOptions(path: '/products/12'),
+      data: {'product': []},
+    ));
+
+    expect(
+      () => repo.getProduct(12),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
   test('getProduct unwraps product payload', () async {
     when(() => dio.get('/products/12')).thenAnswer((_) async => Response(
       requestOptions: RequestOptions(path: '/products/12'),
