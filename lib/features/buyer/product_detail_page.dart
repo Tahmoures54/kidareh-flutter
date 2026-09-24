@@ -32,16 +32,25 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     }
   }
 
-  Future<void> _callStore(String phone) => _openExternal(Uri(scheme: 'tel', path: phone));
+  Future<void> _callStore(String phone) async {
+    final normalized = phone.trim();
+    if (normalized.isEmpty) return;
+    await _openExternal(Uri(scheme: 'tel', path: normalized));
+  }
 
   Future<void> _openMap(Map<String, dynamic> item, String address) async {
     final lat = double.tryParse(item['lat']?.toString() ?? item['latitude']?.toString() ?? '');
     final lng = double.tryParse(item['lng']?.toString() ?? item['longitude']?.toString() ?? '');
-    final label = Uri.encodeComponent(address.isNotEmpty ? address : 'فروشگاه کی‌داره');
-    final uri = lat != null && lng != null
-        ? Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng')
-        : Uri.parse('https://www.google.com/maps/search/?api=1&query=$label');
-    await _openExternal(uri);
+    if (lat == null || lng == null || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      if (address.trim().isEmpty) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('آدرس فروشگاه ثبت نشده است')));
+        return;
+      }
+    }
+    final query = lat != null && lng != null && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
+        ? '$lat,$lng'
+        : address.trim();
+    await _openExternal(Uri.https('www.google.com', '/maps/search/', {'api': '1', 'query': query}));
   }
 
   Widget _content(BuildContext context, Map<String, dynamic> item) {
