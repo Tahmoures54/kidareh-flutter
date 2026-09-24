@@ -62,4 +62,10 @@ class BuyerRepository {
     }
     throw const FormatException('اطلاعات کالا نامعتبر است');
   }
+  Future<Map<String, dynamic>> getStore(int id) async {
+    final response = await _dio.get('/stores/$id');
+    final data = response.data;
+    if (data is Map) return Map<String, dynamic>.from(data);
+    throw const FormatException('اطلاعات فروشگاه نامعتبر است');
+  }
 }
