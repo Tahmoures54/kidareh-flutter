@@ -39,8 +39,22 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 
   Future<void> _openMap(Map<String, dynamic> item, String address) async {
-    final lat = double.tryParse(item['lat']?.toString() ?? item['latitude']?.toString() ?? '');
-    final lng = double.tryParse(item['lng']?.toString() ?? item['longitude']?.toString() ?? '');
+    final storeRaw = item['store'];
+    final storeMap = storeRaw is Map ? Map<String, dynamic>.from(storeRaw) : null;
+    final lat = double.tryParse(
+      item['lat']?.toString() ??
+          item['latitude']?.toString() ??
+          storeMap?['lat']?.toString() ??
+          storeMap?['latitude']?.toString() ??
+          '',
+    );
+    final lng = double.tryParse(
+      item['lng']?.toString() ??
+          item['longitude']?.toString() ??
+          storeMap?['lng']?.toString() ??
+          storeMap?['longitude']?.toString() ??
+          '',
+    );
     if (lat == null || lng == null || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
       if (address.trim().isEmpty) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('آدرس فروشگاه ثبت نشده است')));
@@ -53,17 +67,43 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     await _openExternal(Uri.https('www.google.com', '/maps/search/', {'api': '1', 'query': query}));
   }
 
+  bool _hasValidCoordinates(
+    Map<String, dynamic> item,
+    Map<String, dynamic>? storeMap,
+  ) {
+    final lat = double.tryParse(
+      item['lat']?.toString() ??
+          item['latitude']?.toString() ??
+          storeMap?['lat']?.toString() ??
+          storeMap?['latitude']?.toString() ??
+          '',
+    );
+    final lng = double.tryParse(
+      item['lng']?.toString() ??
+          item['longitude']?.toString() ??
+          storeMap?['lng']?.toString() ??
+          storeMap?['longitude']?.toString() ??
+          '',
+    );
+    return lat != null &&
+        lng != null &&
+        lat >= -90 &&
+        lat <= 90 &&
+        lng >= -180 &&
+        lng <= 180;
+  }
+
   Widget _content(BuildContext context, Map<String, dynamic> item) {
     final name = (item['name'] ?? item['title'] ?? 'کالا').toString();
     final status = buyerStatusLabel(item['status']);
     final storeRaw = item['store'];
     final storeMap = storeRaw is Map ? Map<String, dynamic>.from(storeRaw) : null;
     final store = (item['store_name'] ?? storeMap?['name'] ?? '').toString();
-    final city = (item['store_city'] ?? item['city'] ?? '').toString();
+    final city = (item['store_city'] ?? storeMap?['city'] ?? item['city'] ?? '').toString();
     final address = (item['address'] ?? storeMap?['address'] ?? item['store_address'] ?? '').toString();
     final phone = (item['store_phone'] ?? storeMap?['phone'] ?? item['phone'] ?? '').toString().trim();
     final description = (item['description'] ?? '').toString().trim();
-    final imageUrl = (item['image_url'] ?? '').toString().trim();
+    final imageUrl = (item['image_url'] ?? item['image'] ?? storeMap?['image_url'] ?? '').toString().trim();
     final storeId = int.tryParse(
       item['store_id']?.toString() ?? storeMap?['id']?.toString() ?? '',
     );
@@ -93,11 +133,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       Row(children: [Expanded(child: Text(priceText, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800))),
         Chip(label: Text(status), avatar: Icon(available ? Icons.check_circle_outline : Icons.remove_circle_outline, size: 18))]),
       if (store.isNotEmpty || city.isNotEmpty) Card(child: ListTile(leading: const Icon(Icons.storefront_outlined), title: Text(store.isNotEmpty ? store : 'فروشگاه'), subtitle: city.isNotEmpty ? Text(city) : null)),
-      if (address.isNotEmpty)
+      if (address.isNotEmpty || _hasValidCoordinates(item, storeMap))
         Card(child: ListTile(
           leading: const Icon(Icons.location_on_outlined),
           title: const Text('آدرس فروشگاه'),
-          subtitle: Text(address),
+          subtitle: Text(address.isNotEmpty ? address : 'موقعیت فروشگاه ثبت شده است'),
           trailing: IconButton(
             tooltip: 'مسیریابی',
             onPressed: () => _openMap(item, address),
