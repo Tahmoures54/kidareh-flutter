@@ -1,3 +1,6 @@
+import 'package:dio/dio.dart';
+import '../../core/network/api_client.dart';
+
 bool isBuyerProductAvailable(Object? status) {
   if (status is! String) return false;
   final normalized = status.trim().toLowerCase();
@@ -22,9 +25,6 @@ String buyerStatusLabel(Object? value) {
   if (value is! String || value.trim().isEmpty) return 'ناموجود';
   return value.trim();
 }
-
-import 'package:dio/dio.dart';
-import '../../core/network/api_client.dart';
 
 class BuyerSearchPage {
   const BuyerSearchPage({
