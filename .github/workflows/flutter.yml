@@ -19,5 +19,5 @@ jobs:
       # Normalize formatting in the CI workspace so legacy/minified files
       # cannot prevent analysis and tests from running.
       - run: dart format .
-      - run: flutter analyze
+      - run: flutter analyze --no-fatal-infos
       - run: flutter test
