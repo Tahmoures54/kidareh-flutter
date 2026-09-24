@@ -25,6 +25,16 @@ String networkErrorMessage(Object error) {
   return 'ارتباط با سرور انجام نشد. دوباره تلاش کن.';
 }
 
+bool shouldRefreshAfterUnauthorized(RequestOptions request) {
+  const nonRefreshablePaths = <String>{
+    '/auth/send-otp',
+    '/auth/verify-otp',
+    '/auth/refresh',
+    '/auth/logout',
+  };
+  return !nonRefreshablePaths.contains(request.path);
+}
+
 final dioProvider = DioProvider();
 
 class DioProvider {
@@ -42,7 +52,7 @@ class DioProvider {
       },
       onError: (error, handler) async {
         if (error.response?.statusCode == 401 &&
-            _shouldRefresh(error.requestOptions) &&
+            shouldRefreshAfterUnauthorized(error.requestOptions) &&
             error.requestOptions.extra['_kidarehRetried'] != true) {
           if (await _refresh()) {
             final request = error.requestOptions;
@@ -70,16 +80,6 @@ class DioProvider {
   ));
 
   final TokenStorage _storage = const TokenStorage();
-
-  bool _shouldRefresh(RequestOptions request) {
-    const nonRefreshablePaths = <String>{
-      '/auth/send-otp',
-      '/auth/verify-otp',
-      '/auth/refresh',
-      '/auth/logout',
-    };
-    return !nonRefreshablePaths.contains(request.path);
-  }
 
   Future<bool> _refresh() {
     final inFlight = _refreshFuture;
