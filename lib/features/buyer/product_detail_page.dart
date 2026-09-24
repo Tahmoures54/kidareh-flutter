@@ -45,7 +45,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
   Widget _content(BuildContext context, Map<String, dynamic> item) {
     final name = (item['name'] ?? item['title'] ?? 'کالا').toString();
-    final status = (item['status'] ?? 'ناموجود').toString();
+    final status = buyerStatusLabel(item['status']);
     final store = (item['store_name'] ?? '').toString();
     final city = (item['store_city'] ?? item['city'] ?? '').toString();
     final address = (item['address'] ?? item['store_address'] ?? '').toString();
@@ -54,7 +54,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     final imageUrl = (item['image_url'] ?? '').toString().trim();
     final storeId = int.tryParse(item['store_id']?.toString() ?? '');
     final price = item['price'];
-    final priceText = price is num && price > 0 ? '${price.toStringAsFixed(0)} تومان' : 'قیمت توافقی';
+    final priceText = buyerPriceLabel(price);
     final normalizedStatus = status.trim().toLowerCase();
     final available = normalizedStatus == 'موجود' || normalizedStatus == 'فقط ۱ عدد' || normalizedStatus == 'available';
     return ListView(padding: const EdgeInsets.fromLTRB(16,16,16,32), children: [
