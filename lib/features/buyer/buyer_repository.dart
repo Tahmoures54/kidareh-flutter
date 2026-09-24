@@ -53,4 +53,13 @@ class BuyerRepository {
       nextCursor: data['nextCursor']?.toString(),
     );
   }
+  Future<Map<String, dynamic>> getProduct(int id) async {
+    final response = await _dio.get('/products/$id');
+    final data = response.data;
+    if (data is Map) {
+      final raw = data['product'] ?? data;
+      if (raw is Map) return Map<String, dynamic>.from(raw);
+    }
+    throw const FormatException('اطلاعات کالا نامعتبر است');
+  }
 }
