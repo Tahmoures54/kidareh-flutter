@@ -91,6 +91,12 @@ class _SellerPageState extends ConsumerState<SellerPage> {
   }
 
   Future<void> _loadStats() async {
+    final role = ref.read(authControllerProvider).valueOrNull?['role']?.toString();
+    final seller = role == 'seller' || role == 'admin';
+    if (!seller) {
+      if (mounted) setState(() => stats = null);
+      return;
+    }
     if (mounted) setState(() => statsLoading = true);
     try { final value = await ref.read(sellerStatsRepositoryProvider).fetchMyStats(); if (mounted) setState(() => stats = value); }
     catch (_) { if (mounted) setState(() => stats = null); }
