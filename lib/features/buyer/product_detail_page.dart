@@ -14,6 +14,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   Map<String, dynamic>? product; bool loading = true; String? error;
   @override void initState() { super.initState(); _load(); }
   Future<void> _load() async {
+    setState(() { loading = true; error = null; });
     try { final result = await repo.getProduct(widget.productId); if (!mounted) return; setState(() { product = result; loading = false; }); }
     catch (_) { if (mounted) setState(() { loading = false; error = 'اطلاعات کالا دریافت نشد'; }); }
   }
@@ -49,11 +50,31 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     final city = (item['store_city'] ?? item['city'] ?? '').toString();
     final address = (item['address'] ?? item['store_address'] ?? '').toString();
     final phone = (item['store_phone'] ?? item['phone'] ?? '').toString().trim();
-    final description = (item['description'] ?? '').toString();
+    final description = (item['description'] ?? '').toString().trim();
+    final imageUrl = (item['image_url'] ?? '').toString().trim();
+    final storeId = int.tryParse(item['store_id']?.toString() ?? '');
     final price = item['price'];
     final priceText = price is num && price > 0 ? '${price.toStringAsFixed(0)} تومان' : 'قیمت توافقی';
-    final available = status.trim() == 'موجود' || status.trim() == 'فقط ۱ عدد' || status.trim().toLowerCase() == 'available';
+    final normalizedStatus = status.trim().toLowerCase();
+    final available = normalizedStatus == 'موجود' || normalizedStatus == 'فقط ۱ عدد' || normalizedStatus == 'available';
     return ListView(padding: const EdgeInsets.fromLTRB(16,16,16,32), children: [
+      if (imageUrl.isNotEmpty) ...[
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: AspectRatio(
+            aspectRatio: 1.35,
+            child: Image.network(
+              imageUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const ColoredBox(
+                color: Colors.black12,
+                child: Center(child: Icon(Icons.image_not_supported_outlined)),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
       Text(name, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
       const SizedBox(height: 14),
       Row(children: [Expanded(child: Text(priceText, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800))),
@@ -73,13 +94,13 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       if (store.isNotEmpty || phone.isNotEmpty) ...[
         const SizedBox(height: 8),
         Row(children: [
-          if (store.isNotEmpty && item['store_id'] != null)
+          if (storeId != null)
             Expanded(child: OutlinedButton.icon(
-              onPressed: () => context.push('/stores/${item['store_id']}'),
+              onPressed: () => context.push('/stores/$storeId'),
               icon: const Icon(Icons.storefront_outlined),
               label: const Text('مشاهده فروشگاه'),
             )),
-          if (store.isNotEmpty && phone.isNotEmpty && item['store_id'] != null) const SizedBox(width: 8),
+          if (storeId != null && phone.isNotEmpty) const SizedBox(width: 8),
           if (phone.isNotEmpty)
             Expanded(child: FilledButton.icon(
               onPressed: () => _callStore(phone),
