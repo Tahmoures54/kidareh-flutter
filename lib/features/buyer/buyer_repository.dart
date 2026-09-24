@@ -4,18 +4,20 @@ import '../../core/network/api_client.dart';
 bool isBuyerProductAvailable(Object? status) {
   if (status is! String) return false;
   final normalized = status.trim().toLowerCase();
-  return normalized == 'موجود' || normalized == 'فقط ۱ عدد' || normalized == 'available';
+  return normalized == 'موجود' ||
+      normalized == 'فقط ۱ عدد' ||
+      normalized == 'available';
 }
 
 String buyerPriceLabel(Object? value) {
   if (value is num && value > 0) {
-    return '\${value.toStringAsFixed(0)} تومان';
+    return '${value.toStringAsFixed(0)} تومان';
   }
   if (value is String) {
     final normalized = value.trim().replaceAll(',', '');
     final parsed = num.tryParse(normalized);
     if (parsed != null && parsed > 0) {
-      return '\${parsed.toStringAsFixed(0)} تومان';
+      return '${parsed.toStringAsFixed(0)} تومان';
     }
   }
   return 'قیمت توافقی';
@@ -40,7 +42,6 @@ class BuyerSearchPage {
 
 class BuyerRepository {
   BuyerRepository({Dio? dio}) : _dio = dio ?? dioProvider.dio;
-
   final Dio _dio;
 
   Future<BuyerSearchPage> search(
@@ -58,26 +59,21 @@ class BuyerRepository {
         'scope': 'all',
       },
     );
-
     final data = response.data;
     if (data is! Map) {
       throw const FormatException('پاسخ جستجو نامعتبر است');
     }
-
     final raw = data['products'];
     final products = raw is List
-        ? raw
-            .whereType<Map>()
-            .map((item) => Map<String, dynamic>.from(item))
-            .toList()
+        ? raw.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList()
         : <Map<String, dynamic>>[];
-
     return BuyerSearchPage(
       items: products,
       hasMore: data['hasMore'] == true,
       nextCursor: data['nextCursor']?.toString(),
     );
   }
+
   Future<Map<String, dynamic>> getProduct(int id) async {
     final response = await _dio.get('/products/$id');
     final data = response.data;
@@ -87,6 +83,7 @@ class BuyerRepository {
     }
     throw const FormatException('اطلاعات کالا نامعتبر است');
   }
+
   Future<Map<String, dynamic>> getStore(int id) async {
     final response = await _dio.get('/stores/$id');
     final data = response.data;
