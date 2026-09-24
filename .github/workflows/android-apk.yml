@@ -24,6 +24,9 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
+      - name: Generate Android platform
+        run: flutter create --platforms=android --project-name=kidareh_flutter .
+
       - name: Analyze
         run: flutter analyze --no-fatal-infos
 
