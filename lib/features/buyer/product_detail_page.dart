@@ -1,170 +1,193 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'buyer_repository.dart';
+import '../../core/models/product.dart';
 import '../../core/network/api_client.dart';
+import 'buyer_repository.dart';
 
 class ProductDetailPage extends StatefulWidget {
   const ProductDetailPage({super.key, required this.productId});
   final int productId;
-  @override State<ProductDetailPage> createState() => _ProductDetailPageState();
+
+  @override
+  State<ProductDetailPage> createState() => _ProductDetailPageState();
 }
 
 class _ProductDetailPageState extends State<ProductDetailPage> {
   final repo = BuyerRepository();
-  Map<String, dynamic>? product; bool loading = true; String? error;
-  @override void initState() { super.initState(); _load(); }
+  Product? product;
+  bool loading = true;
+  String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
   Future<void> _load() async {
-    setState(() { loading = true; error = null; });
-    try { final result = await repo.getProduct(widget.productId); if (!mounted) return; setState(() { product = result; loading = false; }); }
-    catch (e) { if (mounted) setState(() { loading = false; error = networkErrorMessage(e); }); }
-  }
-  @override Widget build(BuildContext context) {
-    final item = product;
-    return Scaffold(appBar: AppBar(title: const Text('جزئیات کالا')), body: loading
-      ? const Center(child: CircularProgressIndicator())
-      : error != null ? Center(child: FilledButton(onPressed: _load, child: Text(error!)))
-      : item == null ? const Center(child: Text('کالا پیدا نشد')) : _content(context, item));
-  }
-  Future<void> _openExternal(Uri uri) async {
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('امکان باز کردن این مورد وجود ندارد')));
-    }
-  }
-
-  Future<void> _callStore(String phone) async {
-    final normalized = phone.trim();
-    if (normalized.isEmpty) return;
-    await _openExternal(Uri(scheme: 'tel', path: normalized));
-  }
-
-  Future<void> _openMap(Map<String, dynamic> item, String address) async {
-    final storeRaw = item['store'];
-    final storeMap = storeRaw is Map ? Map<String, dynamic>.from(storeRaw) : null;
-    final lat = double.tryParse(
-      item['lat']?.toString() ??
-          item['latitude']?.toString() ??
-          storeMap?['lat']?.toString() ??
-          storeMap?['latitude']?.toString() ??
-          '',
-    );
-    final lng = double.tryParse(
-      item['lng']?.toString() ??
-          item['longitude']?.toString() ??
-          storeMap?['lng']?.toString() ??
-          storeMap?['longitude']?.toString() ??
-          '',
-    );
-    if (lat == null || lng == null || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-      if (address.trim().isEmpty) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('آدرس فروشگاه ثبت نشده است')));
-        return;
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    try {
+      final result = await repo.getProduct(widget.productId);
+      if (!mounted) return;
+      setState(() {
+        product = result;
+        loading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          error = networkErrorMessage(e);
+        });
       }
     }
-    final query = lat != null && lng != null && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
-        ? '$lat,$lng'
-        : address.trim();
+  }
+
+  Future<void> _openExternal(Uri uri) async {
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('امکان باز کردن این مورد وجود ندارد')),
+      );
+    }
+  }
+
+  Future<void> _openMap(Product item) async {
+    final hasCoords = item.latitude != null &&
+        item.longitude != null &&
+        item.latitude! >= -90 &&
+        item.latitude! <= 90 &&
+        item.longitude! >= -180 &&
+        item.longitude! <= 180;
+    if (!hasCoords && item.storeAddress.trim().isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('آدرس فروشگاه ثبت نشده است')),
+        );
+      }
+      return;
+    }
+    final query = hasCoords ? '${item.latitude},${item.longitude}' : item.storeAddress.trim();
     await _openExternal(Uri.https('www.google.com', '/maps/search/', {'api': '1', 'query': query}));
   }
 
-  bool _hasValidCoordinates(
-    Map<String, dynamic> item,
-    Map<String, dynamic>? storeMap,
-  ) {
-    final lat = double.tryParse(
-      item['lat']?.toString() ??
-          item['latitude']?.toString() ??
-          storeMap?['lat']?.toString() ??
-          storeMap?['latitude']?.toString() ??
-          '',
+  @override
+  Widget build(BuildContext context) {
+    final item = product;
+    return Scaffold(
+      appBar: AppBar(title: const Text('جزئیات کالا')),
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : error != null
+              ? Center(child: FilledButton(onPressed: _load, child: Text(error!)))
+              : item == null
+                  ? const Center(child: Text('کالا پیدا نشد'))
+                  : _content(context, item),
     );
-    final lng = double.tryParse(
-      item['lng']?.toString() ??
-          item['longitude']?.toString() ??
-          storeMap?['lng']?.toString() ??
-          storeMap?['longitude']?.toString() ??
-          '',
-    );
-    return lat != null &&
-        lng != null &&
-        lat >= -90 &&
-        lat <= 90 &&
-        lng >= -180 &&
-        lng <= 180;
   }
 
-  Widget _content(BuildContext context, Map<String, dynamic> item) {
-    final name = (item['name'] ?? item['title'] ?? 'کالا').toString();
-    final status = buyerStatusLabel(item['status']);
-    final storeRaw = item['store'];
-    final storeMap = storeRaw is Map ? Map<String, dynamic>.from(storeRaw) : null;
-    final store = (item['store_name'] ?? storeMap?['name'] ?? '').toString();
-    final city = (item['store_city'] ?? storeMap?['city'] ?? item['city'] ?? '').toString();
-    final address = (item['address'] ?? storeMap?['address'] ?? item['store_address'] ?? '').toString();
-    final phone = (item['store_phone'] ?? storeMap?['phone'] ?? item['phone'] ?? '').toString().trim();
-    final description = (item['description'] ?? '').toString().trim();
-    final imageUrl = (item['image_url'] ?? item['image'] ?? storeMap?['image_url'] ?? '').toString().trim();
-    final storeId = int.tryParse(
-      item['store_id']?.toString() ?? storeMap?['id']?.toString() ?? '',
-    );
-    final price = item['price'];
-    final priceText = buyerPriceLabel(price);
-    final available = isBuyerProductAvailable(status);
-    return ListView(padding: const EdgeInsets.fromLTRB(16,16,16,32), children: [
-      if (imageUrl.isNotEmpty) ...[
-        ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: AspectRatio(
-            aspectRatio: 1.35,
-            child: Image.network(
-              imageUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const ColoredBox(
-                color: Colors.black12,
-                child: Center(child: Icon(Icons.image_not_supported_outlined)),
+  Widget _content(BuildContext context, Product item) {
+    final hasLocation = item.storeAddress.isNotEmpty ||
+        (item.latitude != null && item.longitude != null);
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      children: [
+        if (item.imageUrl.isNotEmpty) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: AspectRatio(
+              aspectRatio: 1.35,
+              child: Image.network(
+                item.imageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const ColoredBox(
+                  color: Colors.black12,
+                  child: Center(child: Icon(Icons.image_not_supported_outlined)),
+                ),
               ),
             ),
           ),
+          const SizedBox(height: 16),
+        ],
+        Text(item.name, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: Text(item.priceLabel, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+            ),
+            Chip(
+              label: Text(item.statusLabel),
+              avatar: Icon(item.available ? Icons.check_circle_outline : Icons.remove_circle_outline, size: 18),
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
-      ],
-      Text(name, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
-      const SizedBox(height: 14),
-      Row(children: [Expanded(child: Text(priceText, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800))),
-        Chip(label: Text(status), avatar: Icon(available ? Icons.check_circle_outline : Icons.remove_circle_outline, size: 18))]),
-      if (store.isNotEmpty || city.isNotEmpty) Card(child: ListTile(leading: const Icon(Icons.storefront_outlined), title: Text(store.isNotEmpty ? store : 'فروشگاه'), subtitle: city.isNotEmpty ? Text(city) : null)),
-      if (address.isNotEmpty || _hasValidCoordinates(item, storeMap))
-        Card(child: ListTile(
-          leading: const Icon(Icons.location_on_outlined),
-          title: const Text('آدرس فروشگاه'),
-          subtitle: Text(address.isNotEmpty ? address : 'موقعیت فروشگاه ثبت شده است'),
-          trailing: IconButton(
-            tooltip: 'مسیریابی',
-            onPressed: () => _openMap(item, address),
-            icon: const Icon(Icons.directions_outlined),
+        if (item.storeName.isNotEmpty || item.storeCity.isNotEmpty)
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.storefront_outlined),
+              title: Text(item.storeName.isNotEmpty ? item.storeName : 'فروشگاه'),
+              subtitle: item.storeCity.isNotEmpty ? Text(item.storeCity) : null,
+            ),
           ),
-        )),
-      if (store.isNotEmpty || phone.isNotEmpty) ...[
-        const SizedBox(height: 8),
-        Row(children: [
-          if (storeId != null)
-            Expanded(child: OutlinedButton.icon(
-              onPressed: () => context.push('/stores/$storeId'),
-              icon: const Icon(Icons.storefront_outlined),
-              label: const Text('مشاهده فروشگاه'),
-            )),
-          if (storeId != null && phone.isNotEmpty) const SizedBox(width: 8),
-          if (phone.isNotEmpty)
-            Expanded(child: FilledButton.icon(
-              onPressed: () => _callStore(phone),
-              icon: const Icon(Icons.phone_outlined),
-              label: const Text('تماس با فروشگاه'),
-            )),
-        ]),
+        if (hasLocation)
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.location_on_outlined),
+              title: const Text('آدرس فروشگاه'),
+              subtitle: Text(item.storeAddress.isNotEmpty ? item.storeAddress : 'موقعیت فروشگاه ثبت شده است'),
+              trailing: IconButton(
+                tooltip: 'مسیریابی',
+                onPressed: () => _openMap(item),
+                icon: const Icon(Icons.directions_outlined),
+              ),
+            ),
+          ),
+        if (item.storeId != null || item.storePhone.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              if (item.storeId != null)
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.push('/stores/${item.storeId}'),
+                    icon: const Icon(Icons.storefront_outlined),
+                    label: const Text('مشاهده فروشگاه'),
+                  ),
+                ),
+              if (item.storeId != null && item.storePhone.isNotEmpty) const SizedBox(width: 8),
+              if (item.storePhone.isNotEmpty)
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => _openExternal(Uri(scheme: 'tel', path: item.storePhone)),
+                    icon: const Icon(Icons.phone_outlined),
+                    label: const Text('تماس با فروشگاه'),
+                  ),
+                ),
+            ],
+          ),
+        ],
+        if (item.description.trim().isNotEmpty) ...[
+          const SizedBox(height: 16),
+          const Text('توضیحات', style: TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          Text(item.description),
+        ],
+        const SizedBox(height: 24),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              item.available
+                  ? 'خرید این کالا به‌صورت حضوری از فروشگاه انجام می‌شود.'
+                  : 'این کالا در حال حاضر موجود نیست؛ برای اطلاع از موجودی می‌توانی با فروشگاه تماس بگیری.',
+            ),
+          ),
+        ),
       ],
-      if (description.isNotEmpty) ...[const SizedBox(height:16), const Text('توضیحات', style: TextStyle(fontWeight: FontWeight.w800)), const SizedBox(height:6), Text(description)],
-      const SizedBox(height:24),
-      Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(available ? 'خرید این کالا به‌صورت حضوری از فروشگاه انجام می‌شود.' : 'این کالا در حال حاضر موجود نیست؛ برای اطلاع از موجودی می‌توانی با فروشگاه تماس بگیری.'))),
-    ]);
+    );
   }
 }

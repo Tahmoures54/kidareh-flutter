@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'buyer_repository.dart';
-import '../../core/network/api_client.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/models/product.dart';
+import '../../core/network/api_client.dart';
+import 'buyer_repository.dart';
 
 class BuyerPage extends StatefulWidget {
   const BuyerPage({super.key});
@@ -15,7 +16,7 @@ class _BuyerPageState extends State<BuyerPage> {
   final scroll = ScrollController();
   final repo = BuyerRepository();
 
-  final List<Map<String, dynamic>> items = [];
+  final List<Product> items = [];
   final List<String> recentSearches = [];
 
   bool loading = false;
@@ -169,21 +170,13 @@ class _BuyerPageState extends State<BuyerPage> {
           ),
           if (lastQuery.isEmpty && recentSearches.isNotEmpty) ...[
             const SizedBox(height: 20),
-            const Text(
-              'جستجوهای اخیر',
-              style: TextStyle(fontWeight: FontWeight.w800),
-            ),
+            const Text('جستجوهای اخیر', style: TextStyle(fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: recentSearches
-                  .map(
-                    (term) => ActionChip(
-                      label: Text(term),
-                      onPressed: () => search(term),
-                    ),
-                  )
+                  .map((term) => ActionChip(label: Text(term), onPressed: () => search(term)))
                   .toList(),
             ),
           ],
@@ -234,26 +227,12 @@ class _BuyerPageState extends State<BuyerPage> {
     );
   }
 
-  Widget _productCard(Map<String, dynamic> product) {
-    final name = (product['name'] ?? product['title'] ?? 'کالا').toString();
-    final priceText = buyerPriceLabel(product['price']);
-    final status = buyerStatusLabel(product['status']);
-    final productId = int.tryParse(product['id']?.toString() ?? '');
-    final rawStore = product['store'];
-    final storeMap = rawStore is Map ? Map<String, dynamic>.from(rawStore) : null;
-    final store = (product['store_name'] ?? storeMap?['name'] ?? '').toString();
-    final city = (product['store_city'] ?? storeMap?['city'] ?? product['city'] ?? '').toString();
-    final imageUrl =
-        (product['image_url'] ?? product['image'] ?? '').toString().trim();
-    final available = isBuyerProductAvailable(status);
-
+  Widget _productCard(Product product) {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: productId != null
-            ? () => context.push('/products/$productId')
-            : null,
+        onTap: () => context.push('/products/${product.id}'),
         child: Padding(
           padding: const EdgeInsets.all(10),
           child: Row(
@@ -264,13 +243,13 @@ class _BuyerPageState extends State<BuyerPage> {
                 child: SizedBox(
                   width: 82,
                   height: 82,
-                  child: imageUrl.isEmpty
+                  child: product.imageUrl.isEmpty
                       ? const ColoredBox(
                           color: Colors.black12,
                           child: Icon(Icons.inventory_2_outlined, size: 30),
                         )
                       : Image.network(
-                          imageUrl,
+                          product.imageUrl,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => const ColoredBox(
                             color: Colors.black12,
@@ -285,17 +264,15 @@ class _BuyerPageState extends State<BuyerPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      name,
+                      product.name,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 7),
                     Text(
-                      priceText,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                      product.priceLabel,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 7),
                     Wrap(
@@ -305,38 +282,32 @@ class _BuyerPageState extends State<BuyerPage> {
                         Chip(
                           visualDensity: VisualDensity.compact,
                           avatar: Icon(
-                            available
-                                ? Icons.check_circle_outline
-                                : Icons.remove_circle_outline,
+                            product.available ? Icons.check_circle_outline : Icons.remove_circle_outline,
                             size: 16,
                           ),
-                          label: Text(status),
+                          label: Text(product.statusLabel),
                         ),
-                        if (store.isNotEmpty)
+                        if (product.storeName.isNotEmpty)
                           Chip(
                             visualDensity: VisualDensity.compact,
-                            avatar: const Icon(Icons.storefront_outlined,
-                                size: 16),
-                            label: Text(store),
+                            avatar: const Icon(Icons.storefront_outlined, size: 16),
+                            label: Text(product.storeName),
                           ),
                       ],
                     ),
-                    if (city.isNotEmpty)
-                      Text(
-                        city,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
+                    if (product.storeCity.isNotEmpty)
+                      Text(product.storeCity, style: Theme.of(context).textTheme.bodySmall),
                   ],
                 ),
               ),
-              if (productId != null)
-                const Padding(
-                  padding: EdgeInsets.only(top: 28),
-                  child: Icon(Icons.chevron_left),
-                ),
+              const Padding(
+                padding: EdgeInsets.only(top: 28),
+                child: Icon(Icons.chevron_left),
+              ),
             ],
           ),
         ),
       ),
     );
-  }}
+  }
+}
