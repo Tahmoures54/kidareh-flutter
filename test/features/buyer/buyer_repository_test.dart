@@ -29,7 +29,8 @@ void main() {
 
     final result = await repo.search('کالا');
 
-    expect(result.items.single['id'], 12);
+    expect(result.items.single.id, 12);
+    expect(result.items.single.name, 'کالای تست');
     expect(result.hasMore, isTrue);
     expect(result.nextCursor, 'abc');
   });
@@ -92,8 +93,8 @@ void main() {
 
     final result = await repo.getProduct(12);
 
-    expect(result['store_id'], 7);
-    expect(result['name'], 'کالای تست');
+    expect(result.storeId, 7);
+    expect(result.name, 'کالای تست');
   });
 
   test('getStore accepts normalized public store payload', () async {
@@ -111,9 +112,10 @@ void main() {
 
     final result = await repo.getStore(7);
 
-    expect(result['id'], 7);
-    expect(result['phone'], '09120000000');
-    expect(result['products'], isA<List>());
+    expect(result.id, 7);
+    expect(result.phone, '09120000000');
+    expect(result.products, isNotEmpty);
+    expect(result.products.first.name, 'کالای تست');
   });
 
   test('getStore rejects non-map payloads', () async {

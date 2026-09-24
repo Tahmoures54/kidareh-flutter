@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import '../../core/models/product.dart';
+import '../../core/models/store.dart';
 import '../../core/network/api_client.dart';
 
 bool isBuyerProductAvailable(Object? status) {
@@ -35,7 +37,7 @@ class BuyerSearchPage {
     this.nextCursor,
   });
 
-  final List<Map<String, dynamic>> items;
+  final List<Product> items;
   final bool hasMore;
   final String? nextCursor;
 }
@@ -69,7 +71,8 @@ class BuyerRepository {
     }
     final products = raw
         .whereType<Map>()
-        .map((item) => Map<String, dynamic>.from(item))
+        .map((item) => Product.fromJson(Map<String, dynamic>.from(item)))
+        .where((item) => item.id > 0)
         .toList();
     final hasMore = data['hasMore'] == true;
     final rawCursor = data['nextCursor'];
@@ -86,23 +89,34 @@ class BuyerRepository {
     );
   }
 
-  Future<Map<String, dynamic>> getProduct(int id) async {
+  Future<Product> getProduct(int id) async {
     if (id <= 0) throw const FormatException('شناسه کالا نامعتبر است');
     final response = await _dio.get('/products/$id');
     final data = response.data;
     if (data is Map) {
       final raw = data['product'] ?? data;
-      if (raw is Map) return Map<String, dynamic>.from(raw);
+      if (raw is Map) {
+        final product = Product.fromJson(Map<String, dynamic>.from(raw));
+        if (product.id <= 0) {
+          throw const FormatException('اطلاعات کالا نامعتبر است');
+        }
+        return product;
+      }
     }
     throw const FormatException('اطلاعات کالا نامعتبر است');
   }
 
-  Future<Map<String, dynamic>> getStore(int id) async {
+  Future<Store> getStore(int id) async {
     if (id <= 0) throw const FormatException('شناسه فروشگاه نامعتبر است');
     final response = await _dio.get('/stores/$id');
     final data = response.data;
-    final raw = data is Map && data['store'] is Map ? data['store'] : data;
-    if (raw is Map) return Map<String, dynamic>.from(raw);
-    throw const FormatException('اطلاعات فروشگاه نامعتبر است');
+    if (data is! Map) {
+      throw const FormatException('اطلاعات فروشگاه نامعتبر است');
+    }
+    final store = Store.fromJson(Map<String, dynamic>.from(data));
+    if (store.id <= 0) {
+      throw const FormatException('اطلاعات فروشگاه نامعتبر است');
+    }
+    return store;
   }
 }
