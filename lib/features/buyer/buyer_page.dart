@@ -83,9 +83,13 @@ class _BuyerPageState extends State<BuyerPage> {
         cursor = page.nextCursor;
       });
     } catch (e) {
-      if (mounted) setState(() => error = networkErrorMessage(e));
+      if (mounted && generation == _searchGeneration) {
+        setState(() => error = networkErrorMessage(e));
+      }
     } finally {
-      if (mounted) setState(() => loading = false);
+      if (mounted && generation == _searchGeneration) {
+        setState(() => loading = false);
+      }
     }
   }
 
@@ -227,35 +231,105 @@ class _BuyerPageState extends State<BuyerPage> {
 
   Widget _productCard(Map<String, dynamic> product) {
     final name = (product['name'] ?? product['title'] ?? 'کالا').toString();
-    final price = product['price'];
+    final priceText = buyerPriceLabel(product['price']);
     final status = buyerStatusLabel(product['status']);
     final productId = int.tryParse(product['id']?.toString() ?? '');
     final store = (product['store_name'] ?? '').toString();
     final city = (product['store_city'] ?? product['city'] ?? '').toString();
-
-    final priceText = buyerPriceLabel(price);
+    final imageUrl =
+        (product['image_url'] ?? product['image'] ?? '').toString().trim();
+    final available = isBuyerProductAvailable(status);
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        onTap: productId != null ? () => context.push('/products/$productId') : null,
-        leading: const CircleAvatar(
-          child: Icon(Icons.inventory_2_outlined),
-        ),
-        title: Text(
-          name,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Text(
-          [
-            priceText,
-            status,
-            if (store.isNotEmpty) store,
-            if (city.isNotEmpty) city,
-          ].join(' • '),
+      margin: const EdgeInsets.only(bottom: 10),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: productId != null
+            ? () => context.push('/products/$productId')
+            : null,
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  width: 82,
+                  height: 82,
+                  child: imageUrl.isEmpty
+                      ? const ColoredBox(
+                          color: Colors.black12,
+                          child: Icon(Icons.inventory_2_outlined, size: 30),
+                        )
+                      : Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const ColoredBox(
+                            color: Colors.black12,
+                            child: Icon(Icons.image_not_supported_outlined),
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      priceText,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                    const SizedBox(height: 7),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        Chip(
+                          visualDensity: VisualDensity.compact,
+                          avatar: Icon(
+                            available
+                                ? Icons.check_circle_outline
+                                : Icons.remove_circle_outline,
+                            size: 16,
+                          ),
+                          label: Text(status),
+                        ),
+                        if (store.isNotEmpty)
+                          Chip(
+                            visualDensity: VisualDensity.compact,
+                            avatar: const Icon(Icons.storefront_outlined,
+                                size: 16),
+                            label: Text(store),
+                          ),
+                      ],
+                    ),
+                    if (city.isNotEmpty)
+                      Text(
+                        city,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                  ],
+                ),
+              ),
+              if (productId != null)
+                const Padding(
+                  padding: EdgeInsets.only(top: 28),
+                  child: Icon(Icons.chevron_left),
+                ),
+            ],
+          ),
         ),
       ),
     );
-  }
-}
+  }}
