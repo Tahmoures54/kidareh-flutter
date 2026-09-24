@@ -71,10 +71,18 @@ class BuyerRepository {
         .whereType<Map>()
         .map((item) => Map<String, dynamic>.from(item))
         .toList();
+    final hasMore = data['hasMore'] == true;
+    final rawCursor = data['nextCursor'];
+    final nextCursor = rawCursor is String && rawCursor.trim().isNotEmpty
+        ? rawCursor.trim()
+        : null;
+    if (hasMore && nextCursor == null) {
+      throw const FormatException('ادامه نتایج جستجو نامعتبر است');
+    }
     return BuyerSearchPage(
       items: products,
-      hasMore: data['hasMore'] == true,
-      nextCursor: data['nextCursor']?.toString(),
+      hasMore: hasMore,
+      nextCursor: nextCursor,
     );
   }
 
