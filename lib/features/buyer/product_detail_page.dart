@@ -56,14 +56,14 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   Widget _content(BuildContext context, Map<String, dynamic> item) {
     final name = (item['name'] ?? item['title'] ?? 'کالا').toString();
     final status = buyerStatusLabel(item['status']);
+    final storeRaw = item['store'];
+    final storeMap = storeRaw is Map ? Map<String, dynamic>.from(storeRaw) : null;
     final store = (item['store_name'] ?? storeMap?['name'] ?? '').toString();
     final city = (item['store_city'] ?? item['city'] ?? '').toString();
     final address = (item['address'] ?? storeMap?['address'] ?? item['store_address'] ?? '').toString();
     final phone = (item['store_phone'] ?? storeMap?['phone'] ?? item['phone'] ?? '').toString().trim();
     final description = (item['description'] ?? '').toString().trim();
     final imageUrl = (item['image_url'] ?? '').toString().trim();
-    final storeRaw = item['store'];
-    final storeMap = storeRaw is Map ? Map<String, dynamic>.from(storeRaw) : null;
     final storeId = int.tryParse(
       item['store_id']?.toString() ?? storeMap?['id']?.toString() ?? '',
     );
