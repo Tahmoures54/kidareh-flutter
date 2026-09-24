@@ -24,6 +24,7 @@ class _BuyerPageState extends State<BuyerPage> {
   String? cursor;
   String? error;
   String lastQuery = '';
+  int _searchGeneration = 0;
 
   @override
   void initState() {
@@ -56,9 +57,12 @@ class _BuyerPageState extends State<BuyerPage> {
     if (query.isEmpty) return;
 
     FocusScope.of(context).unfocus();
+    q.value = TextEditingValue(
+      text: query,
+      selection: TextSelection.collapsed(offset: query.length),
+    );
+    final generation = ++_searchGeneration;
     setState(() {
-      q.text = query;
-      q.selection = TextSelection.collapsed(offset: q.text.length);
       loading = true;
       loadingMore = false;
       error = null;
@@ -72,7 +76,7 @@ class _BuyerPageState extends State<BuyerPage> {
 
     try {
       final page = await repo.search(query);
-      if (!mounted) return;
+      if (!mounted || generation != _searchGeneration) return;
       setState(() {
         items.addAll(page.items);
         hasMore = page.hasMore;
@@ -92,9 +96,10 @@ class _BuyerPageState extends State<BuyerPage> {
       error = null;
     });
 
+    final generation = _searchGeneration;
     try {
       final page = await repo.search(lastQuery, cursor: cursor);
-      if (!mounted) return;
+      if (!mounted || generation != _searchGeneration) return;
       setState(() {
         items.addAll(page.items);
         hasMore = page.hasMore;
