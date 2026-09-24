@@ -223,7 +223,7 @@ class _BuyerPageState extends State<BuyerPage> {
   Widget _productCard(Map<String, dynamic> product) {
     final name = (product['name'] ?? product['title'] ?? 'کالا').toString();
     final price = product['price'];
-    final status = (product['status'] ?? 'ناموجود').toString();
+    final status = buyerStatusLabel(product['status']);
     final productId = int.tryParse(product['id']?.toString() ?? '');
     final store = (product['store_name'] ?? '').toString();
     final city = (product['store_city'] ?? product['city'] ?? '').toString();
