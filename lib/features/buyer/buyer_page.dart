@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/models/product.dart';
 import '../../core/network/api_client.dart';
 import 'buyer_repository.dart';
@@ -13,6 +17,7 @@ class BuyerPage extends StatefulWidget {
 
 class _BuyerPageState extends State<BuyerPage> {
   final q = TextEditingController();
+  final city = TextEditingController();
   final scroll = ScrollController();
   final repo = BuyerRepository();
 
@@ -22,22 +27,29 @@ class _BuyerPageState extends State<BuyerPage> {
   bool loading = false;
   bool loadingMore = false;
   bool hasMore = false;
+  bool showingCache = false;
   String? cursor;
   String? error;
   String lastQuery = '';
   int _searchGeneration = 0;
+
+  static const _queryKey = 'kidareh_last_query';
+  static const _cityKey = 'kidareh_last_city';
+  static const _resultsKey = 'kidareh_last_results';
 
   @override
   void initState() {
     super.initState();
     scroll.addListener(_onScroll);
     q.addListener(_onQueryChanged);
+    _restoreLastSearch();
   }
 
   @override
   void dispose() {
     q.removeListener(_onQueryChanged);
     q.dispose();
+    city.dispose();
     scroll.dispose();
     super.dispose();
   }
@@ -53,6 +65,41 @@ class _BuyerPageState extends State<BuyerPage> {
     }
   }
 
+  Future<void> _restoreLastSearch() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedQuery = prefs.getString(_queryKey)?.trim() ?? '';
+    final savedCity = prefs.getString(_cityKey)?.trim() ?? '';
+    final raw = prefs.getString(_resultsKey);
+    if (!mounted) return;
+    if (savedQuery.isNotEmpty) {
+      q.text = savedQuery;
+      lastQuery = savedQuery;
+    }
+    if (savedCity.isNotEmpty) city.text = savedCity;
+    if (raw != null && raw.isNotEmpty) {
+      final decoded = jsonDecode(raw);
+      if (decoded is List) {
+        items
+          ..clear()
+          ..addAll(
+            decoded.whereType<Map>().map((item) => Product.fromJson(Map<String, dynamic>.from(item))),
+          );
+        showingCache = items.isNotEmpty;
+      }
+    }
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _persist() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_queryKey, lastQuery);
+    await prefs.setString(_cityKey, city.text.trim());
+    await prefs.setString(
+      _resultsKey,
+      jsonEncode(items.take(20).map((item) => item.toJson()).toList()),
+    );
+  }
+
   Future<void> search([String? value]) async {
     final query = (value ?? q.text).trim();
     if (query.isEmpty) return;
@@ -66,23 +113,27 @@ class _BuyerPageState extends State<BuyerPage> {
     setState(() {
       loading = true;
       loadingMore = false;
+      showingCache = items.isNotEmpty && lastQuery == query;
       error = null;
       cursor = null;
       hasMore = false;
-      items.clear();
       lastQuery = query;
     });
 
     _remember(query);
 
     try {
-      final page = await repo.search(query);
+      final page = await repo.search(query, city: city.text);
       if (!mounted || generation != _searchGeneration) return;
       setState(() {
-        items.addAll(page.items);
+        items
+          ..clear()
+          ..addAll(page.items);
         hasMore = page.hasMore;
         cursor = page.nextCursor;
+        showingCache = false;
       });
+      await _persist();
     } catch (e) {
       if (mounted && generation == _searchGeneration) {
         setState(() => error = networkErrorMessage(e));
@@ -103,13 +154,14 @@ class _BuyerPageState extends State<BuyerPage> {
 
     final generation = _searchGeneration;
     try {
-      final page = await repo.search(lastQuery, cursor: cursor);
+      final page = await repo.search(lastQuery, cursor: cursor, city: city.text);
       if (!mounted || generation != _searchGeneration) return;
       setState(() {
         items.addAll(page.items);
         hasMore = page.hasMore;
         cursor = page.nextCursor;
       });
+      await _persist();
     } catch (e) {
       if (mounted && generation == _searchGeneration) {
         setState(() => error = networkErrorMessage(e));
@@ -136,7 +188,17 @@ class _BuyerPageState extends State<BuyerPage> {
       cursor = null;
       hasMore = false;
       lastQuery = '';
+      showingCache = false;
     });
+  }
+
+  Future<void> _call(String phone) async {
+    final uri = Uri(scheme: 'tel', path: phone);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('امکان تماس وجود ندارد')),
+      );
+    }
   }
 
   @override
@@ -149,7 +211,7 @@ class _BuyerPageState extends State<BuyerPage> {
         children: [
           TextField(
             controller: q,
-            autofocus: true,
+            autofocus: lastQuery.isEmpty,
             textInputAction: TextInputAction.search,
             onSubmitted: search,
             decoration: InputDecoration(
@@ -168,6 +230,16 @@ class _BuyerPageState extends State<BuyerPage> {
                     ),
             ),
           ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: city,
+            textInputAction: TextInputAction.search,
+            onSubmitted: search,
+            decoration: const InputDecoration(
+              hintText: 'شهر (اختیاری)',
+              prefixIcon: Icon(Icons.location_city_outlined),
+            ),
+          ),
           if (lastQuery.isEmpty && recentSearches.isNotEmpty) ...[
             const SizedBox(height: 20),
             const Text('جستجوهای اخیر', style: TextStyle(fontWeight: FontWeight.w800)),
@@ -180,7 +252,12 @@ class _BuyerPageState extends State<BuyerPage> {
                   .toList(),
             ),
           ],
-          if (loading) ...[
+          if (showingCache && items.isNotEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 12),
+              child: Text('نتیجه قبلی — در حال بروزرسانی'),
+            ),
+          if (loading && items.isEmpty) ...[
             const SizedBox(height: 32),
             const Center(child: CircularProgressIndicator()),
           ],
@@ -203,7 +280,7 @@ class _BuyerPageState extends State<BuyerPage> {
               padding: EdgeInsets.only(top: 40),
               child: Center(
                 child: Text(
-                  'نتیجه‌ای پیدا نشد. نام کالا یا برند دیگری را امتحان کن.',
+                  'نتیجه‌ای پیدا نشد. نام کالا یا شهر دیگری را امتحان کن.',
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -297,12 +374,19 @@ class _BuyerPageState extends State<BuyerPage> {
                     ),
                     if (product.storeCity.isNotEmpty)
                       Text(product.storeCity, style: Theme.of(context).textTheme.bodySmall),
+                    if (product.storePhone.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: FilledButton.tonalIcon(
+                          onPressed: () => _call(product.storePhone),
+                          icon: const Icon(Icons.phone_outlined, size: 18),
+                          label: const Text('تماس'),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
-              ),
-              const Padding(
-                padding: EdgeInsets.only(top: 28),
-                child: Icon(Icons.chevron_left),
               ),
             ],
           ),
