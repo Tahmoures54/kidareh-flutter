@@ -44,6 +44,22 @@ class Product {
 
   String get statusLabel => status.trim().isEmpty ? 'ناموجود' : status.trim();
 
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'price': price,
+    'status': status,
+    'description': description,
+    'image_url': imageUrl,
+    'store_id': storeId,
+    'store_name': storeName,
+    'store_city': storeCity,
+    'store_address': storeAddress,
+    'store_phone': storePhone,
+    'lat': latitude,
+    'lng': longitude,
+  };
+
   factory Product.fromJson(Map<String, dynamic> json) {
     final storeRaw = json['store'];
     final store = storeRaw is Map ? Map<String, dynamic>.from(storeRaw) : const <String, dynamic>{};

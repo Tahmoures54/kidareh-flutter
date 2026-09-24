@@ -49,16 +49,19 @@ class BuyerRepository {
   Future<BuyerSearchPage> search(
     String query, {
     String? cursor,
+    String? city,
     int limit = 20,
   }) async {
+    final normalizedCity = city?.trim();
     final response = await _dio.get(
       '/products/search',
       queryParameters: {
         'q': query,
         'limit': limit,
         if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+        if (normalizedCity != null && normalizedCity.isNotEmpty) 'city': normalizedCity,
         'sort': 'newest',
-        'scope': 'all',
+        'scope': normalizedCity == null || normalizedCity.isEmpty ? 'all' : 'city',
       },
     );
     final data = response.data;
