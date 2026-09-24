@@ -64,9 +64,13 @@ class BuyerRepository {
       throw const FormatException('پاسخ جستجو نامعتبر است');
     }
     final raw = data['products'];
-    final products = raw is List
-        ? raw.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList()
-        : <Map<String, dynamic>>[];
+    if (raw is! List) {
+      throw const FormatException('فهرست نتایج جستجو نامعتبر است');
+    }
+    final products = raw
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
     return BuyerSearchPage(
       items: products,
       hasMore: data['hasMore'] == true,
