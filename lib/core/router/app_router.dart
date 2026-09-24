@@ -9,10 +9,22 @@ import '../../features/buyer/store_detail_page.dart';
 import '../../features/seller/seller_page.dart';
 import '../../features/referral/referral_page.dart';
 import '../../features/profile/profile_page.dart';
+import '../../features/auth/auth_controller.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  return GoRouter(
+  final router = GoRouter(
     initialLocation: '/',
+    redirect: (context, state) {
+      final loggedIn = ref.read(authControllerProvider).valueOrNull != null;
+      final isAuth = state.matchedLocation == '/login';
+      final protected = state.matchedLocation == '/profile' ||
+          state.matchedLocation == '/seller';
+      if (protected && !loggedIn) {
+        return '/login?redirect=${Uri.encodeComponent(state.uri.toString())}';
+      }
+      if (isAuth && loggedIn) return '/';
+      return null;
+    },
     routes: [
       GoRoute(path: '/', builder: (_, __) => const HomePage()),
       GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
@@ -35,4 +47,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       body: Center(child: Text('صفحه یافت نشد: ${state.uri}')),
     ),
   );
+  ref.listen(authControllerProvider, (_, __) => router.refresh());
+  return router;
 });
