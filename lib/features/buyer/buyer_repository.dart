@@ -1,3 +1,19 @@
+bool isBuyerProductAvailable(Object? status) {
+  if (status is! String) return false;
+  final normalized = status.trim().toLowerCase();
+  return normalized == 'موجود' || normalized == 'فقط ۱ عدد' || normalized == 'available';
+}
+
+String buyerPriceLabel(Object? value) {
+  if (value is num && value > 0) return '${value.toStringAsFixed(0)} تومان';
+  return 'قیمت توافقی';
+}
+
+String buyerStatusLabel(Object? value) {
+  if (value is! String || value.trim().isEmpty) return 'ناموجود';
+  return value.trim();
+}
+
 import 'package:dio/dio.dart';
 import '../../core/network/api_client.dart';
 
