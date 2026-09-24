@@ -28,13 +28,19 @@ class _BuyerPageState extends State<BuyerPage> {
   void initState() {
     super.initState();
     scroll.addListener(_onScroll);
+    q.addListener(_onQueryChanged);
   }
 
   @override
   void dispose() {
+    q.removeListener(_onQueryChanged);
     q.dispose();
     scroll.dispose();
     super.dispose();
+  }
+
+  void _onQueryChanged() {
+    if (mounted) setState(() {});
   }
 
   void _onScroll() {
