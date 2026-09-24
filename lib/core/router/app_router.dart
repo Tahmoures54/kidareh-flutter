@@ -7,7 +7,6 @@ import '../../features/buyer/buyer_page.dart';
 import '../../features/buyer/product_detail_page.dart';
 import '../../features/buyer/store_detail_page.dart';
 import '../../features/seller/seller_page.dart';
-import '../../features/referral/referral_page.dart';
 import '../../features/profile/profile_page.dart';
 import '../../features/auth/auth_controller.dart';
 
@@ -17,8 +16,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final authState = ref.read(authControllerProvider);
 
-      // Wait for saved-session restoration before deciding whether a
-      // protected route should go to login.
       if (authState.isLoading || authState.hasError) return null;
 
       final loggedIn = authState.valueOrNull != null;
@@ -50,7 +47,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return ProductDetailPage(productId: id);
       }),
       GoRoute(path: '/seller', builder: (_, __) => const SellerPage()),
-      GoRoute(path: '/referral', builder: (_, __) => const ReferralPage()),
       GoRoute(path: '/profile', builder: (_, __) => const ProfilePage()),
     ],
     errorBuilder: (_, state) => Scaffold(

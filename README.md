@@ -1,44 +1,41 @@
 # Kidareh Flutter
 
-اپلیکیشن یکپارچه موبایل کی‌داره برای خریدار، فروشنده و معرف.
+همراه سبک موبایل برای سایت [کی‌داره](https://github.com/Tahmoures54/kidareh).
+
+وب منبع حقیقت است. این اپ نقشه، چت، AI، پرداخت و سیستم معرفی را کپی نمی‌کند.
+
+## داخل اپ
+
+- ورود OTP موبایل (Bearer token)
+- جستجوی کالا و جزئیات کالا/فروشگاه
+- تماس و مسیریابی با اپ سیستم
+- مدیریت ساده کالای فروشنده
+- پروفایل و خروج
+
+## بیرون اپ (فقط سایت)
+
+نقشه، چت، دستیار هوشمند، پرداخت، تیکت، ادمین، پروموشن و **رفرال/کیف پول**
+
+https://kidareh.com
 
 ## معماری
-- Flutter + Material 3
-- Riverpod برای مدیریت state
-- GoRouter برای navigation
-- Dio برای API
-- Flutter Secure Storage برای credentialهای حساس
-- Backend مشترک با وب‌سایت کی‌داره
-- UI فارسی و RTL
-- ساختار feature-first
 
-## نقش‌ها
-یک حساب می‌تواند هم‌زمان خریدار، فروشنده و معرف باشد؛ معماری اپ بر مبنای سه اپ جدا نیست.
+- Flutter + Material 3 + RTL
+- Riverpod + GoRouter + Dio
+- Flutter Secure Storage
+- بک‌اند مشترک با وب
 
-خریدار: جستجو، موقعیت، فروشگاه نزدیک، موجودی/قیمت، درخواست کالا، چت و خرید.
-فروشنده: فروشگاه، کالا، قیمت، موجودی، درخواست مشتری و گزارش.
-معرف: کد معرفی، معرفی‌ها، پورسانت، دفتر تراکنش، کیف پول و برداشت.
-
-محاسبه و ثبت پورسانت فقط در backend انجام می‌شود.
-
-## Backend
-مسیرهای اصلی backend فعلی:
-- /api/auth/send-otp
-- /api/auth/verify-otp
-- /api/auth/me
-- /api/products
-- /api/stores
-- /api/messages
-- /api/referral/stats
-- /api/referral/transactions
-- /api/referral/withdraw
-- /api/referral/apply
-
-احراز هویت وب‌سایت فعلاً HttpOnly cookie است. برای موبایل باید قرارداد session/token مخصوص mobile در backend نهایی شود.
+UI → Controller/Notifier → Repository → API Client → Backend
 
 ## اجرا
-flutter pub get
-flutter run --dart-define=KIDAREH_API_URL=https://YOUR-DOMAIN/api
 
-## اصل توسعه
-UI → Controller/Notifier → Repository → API Client → Backend
+```bash
+flutter pub get
+flutter run --dart-define=KIDAREH_API_URL=https://kidareh.com/api --dart-define=KIDAREH_WEB_URL=https://kidareh.com
+```
+
+اگر پوشه‌های پلتفرم نیست:
+
+```bash
+flutter create . --project-name kidareh_flutter
+```
