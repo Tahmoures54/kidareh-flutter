@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'auth_controller.dart';
 
@@ -19,7 +20,14 @@ class _LoginPageState extends ConsumerState<LoginPage>{
       else{
         final r=await repo.verifyOtp(phone.text.trim(),code.text.trim());
         await ref.read(authControllerProvider.notifier).setUser(Map<String,dynamic>.from(r['user'] as Map));
-        if(mounted)Navigator.pop(context);
+        if (mounted) {
+          final redirect = GoRouterState.of(context).uri.queryParameters['redirect'];
+          if (redirect != null && redirect.startsWith('/')) {
+            context.go(redirect);
+          } else {
+            context.go('/');
+          }
+        }
       }
     }catch(e){
       final m=e is DioException && e.response?.data is Map ? (e.response!.data['error']??'خطا').toString() : 'ارتباط با سرور برقرار نشد';
