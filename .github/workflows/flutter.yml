@@ -16,6 +16,8 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: dart format --output=none --set-exit-if-changed .
+      # Normalize formatting in the CI workspace so legacy/minified files
+      # cannot prevent analysis and tests from running.
+      - run: dart format .
       - run: flutter analyze
       - run: flutter test
